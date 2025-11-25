@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-// Cerbero Web v1 — Pagina Pricing (Pilot vs Autopilot)
+// Cerbero Web v1 — Pagina Pricing (Autopilot unico)
 
 const ui = {
   fonts: {
@@ -13,7 +13,7 @@ const ui = {
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
   <div
-    className="min-h-screen w-full bg-gradient-to-b from-[#0a1020] via-[#0e1731] to-white text-white"
+    className="min-h-screen w-full bg-gradient-to-b from-[#0a1020] via-[#0e1731] to-black text-white"
     style={{ fontFamily: ui.fonts.body }}
   >
     <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -72,10 +72,10 @@ const Nav = () => (
 
       <div className="flex items-center gap-3">
         <a
-          href="/signup"
+          href="/signup?plan=autopilot"
           className="hidden sm:inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium bg-white text-[#0a1020] hover:opacity-90 transition"
         >
-          Inizia ora
+          Attiva Autopilot
         </a>
       </div>
     </div>
@@ -114,7 +114,7 @@ const PlanCard = ({
   >
     {highlight && (
       <div className="absolute -top-3 right-6 rounded-full bg-emerald-400 text-[#0a1020] text-xs font-semibold px-3 py-1 shadow-lg">
-        Più scelto
+        Piano unico
       </div>
     )}
 
@@ -225,41 +225,29 @@ export default function PricingPage() {
       <Section>
         <div className="text-center mb-10">
           <div className="mb-3 inline-flex items-center gap-2 justify-center">
-            <Badge>Scegli il tuo pilota</Badge>
+            <Badge>Un solo piano. Nessuna confusione.</Badge>
           </div>
           <h1 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">
-            Pricing semplice. Pilot o Autopilot.
+            Autopilot 80€/mese. Tutto incluso.
           </h1>
           <p className="text-white/70 max-w-2xl mx-auto text-sm md:text-base">
-            Inizi con la Workstation 3.0, poi decidi se lasciare il volante
-            alla Coscienza AI. Nessun vincolo annuale, cancelli quando vuoi.
+            Accendi la Coscienza AI, lei lavora 24/7 sui mercati. Tu continui la
+            tua vita. Nessun vincolo annuale, puoi spegnere l&apos;Autopilot
+            quando vuoi.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-10">
-          <PlanCard
-            title="Pilot"
-            price="40€"
-            description="Per chi vuole restare al volante ma con un copilota AI accanto."
-            features={[
-              "Accesso completo alla Workstation 3.0",
-              "Copilota AI con analisi e probabilità",
-              "Equity e performance in tempo reale",
-              "Autotrading visibile ma bloccato (lucchetto)",
-            ]}
-            ctaLabel="Inizia con Pilot"
-            ctaHref="/signup?plan=pilot"
-          />
-
+        <div className="max-w-xl mx-auto mb-10">
           <PlanCard
             title="Autopilot"
             price="80€"
-            description="Per chi vuole accendere la Coscienza AI e lasciare che lavori 24/7."
+            description="Per chi vuole accendere Cerbero e lasciare che la Coscienza AI gestisca i mercati in autonomia."
             features={[
-              "Tutto ciò che include il piano Pilot",
-              "Autotrading completo gestito dalla Coscienza",
+              "Autotrading completo gestito dalla Coscienza AI",
+              "Monitoraggio continuo dei mercati 24/7",
               "Scudi di protezione e controllo del rischio",
-              "Interruttore AUTOTRADING ON/OFF sempre visibile",
+              "Interruttore AUTOTRADING ON/OFF sempre sotto il tuo controllo",
+              "Dashboard dedicata con saldo, P&L e operazioni recenti",
             ]}
             highlight
             ctaLabel="Attiva Autopilot"
@@ -270,15 +258,16 @@ export default function PricingPage() {
         <div className="rounded-3xl bg-white/5 border border-white/15 px-6 py-5 md:px-8 md:py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="text-sm text-emerald-300 font-semibold mb-1">
-              Incluso in entrambi i piani
+              Architettura Cerbero
             </div>
             <div className="text-base md:text-lg font-semibold">
               Ponte 1-a-1: i tuoi soldi, il tuo contratto.
             </div>
             <p className="text-xs md:text-sm text-white/70 mt-2 max-w-xl">
               I fondi passano dalla banca alla tua cassaforte personale su
-              blockchain. Noi abbiamo il telecomando operativo, ma non le chiavi
-              per spostare il capitale fuori dal tuo contratto.
+              blockchain (smart contract dedicato). Noi abbiamo il telecomando
+              operativo, ma non le chiavi per spostare il capitale fuori dal tuo
+              contratto.
             </p>
           </div>
           <a

@@ -2,21 +2,22 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import { motion } from "framer-motion";
 
-// Cerbero Web v1 — Landing pulita (Hero + Valore + Cerbero Index placeholder)
+// Cerbero Web v1 — Landing futurizzata (Hero + Valore + Cerbero Index)
 
 // —————————————————————————————————————————————————————————
 // UI KIT (tokens)
 // —————————————————————————————————————————————————————————
 const ui = {
   palette: {
-    ink: "#0a1020", // deep navy
-    kaya: "#0f1b3d", // darker navy
+    ink: "#0a1020",
+    kaya: "#0f1b3d",
     glass: "rgba(255,255,255,0.1)",
     paper: "#ffffff",
     mist: "#f5f7fb",
-    accent: "#4f7cff", // primary blue
-    accent2: "#22d3ee", // cyan accent
+    accent: "#4f7cff",
+    accent2: "#22d3ee",
     success: "#16a34a",
     warning: "#f59e0b",
     danger: "#ef4444",
@@ -26,12 +27,6 @@ const ui = {
     heading:
       "Inter, Plus Jakarta Sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
     body: "Inter, Plus Jakarta Sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-  },
-  radius: {
-    xl: "1.25rem",
-    lg: "1rem",
-    md: "0.75rem",
-    sm: "0.5rem",
   },
   shadow: {
     soft: "0 10px 30px rgba(10,16,32,0.18)",
@@ -47,7 +42,7 @@ const ui = {
 // Shell di base con background gradient
 const Shell = ({ children }: { children: React.ReactNode }) => (
   <div
-    className="min-h-screen w-full bg-gradient-to-b from-[#0a1020] via-[#0e1731] to-white text-white"
+    className="min-h-screen w-full bg-gradient-to-b from-[#050816] via-[#070b1c] to-black text-white"
     style={{ fontFamily: ui.fonts.body }}
   >
     <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -68,16 +63,16 @@ const Shell = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-// NAVBAR definitiva (solo link pubblici, niente moduli, niente dashboard interna)
 // NAVBAR futuristica con menu mobile
 const Nav = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <header
-      className={`sticky top-0 z-30 ${ui.spacing.gutterX} pt-4 pb-3`}
-    >
-      <div
+    <header className={`${ui.spacing.gutterX} pt-4 pb-3 sticky top-0 z-30`}>
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
         className="mx-auto max-w-7xl rounded-3xl border border-white/15 bg-white/5/60 backdrop-blur-2xl px-4 sm:px-6 py-3 flex items-center justify-between shadow-[0_18px_60px_rgba(0,0,0,0.55)]"
       >
         {/* Logo + nome */}
@@ -121,7 +116,7 @@ const Nav = () => {
             href="/pricing"
             className="hidden sm:inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium bg-white text-[#0a1020] hover:opacity-90 transition shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
           >
-            Get Early Access
+            Attiva Autotrading
           </a>
 
           {/* Burger mobile */}
@@ -135,11 +130,15 @@ const Nav = () => {
             <span className="w-4 h-[1.5px] bg-white block" />
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Pannello mobile */}
       {open && (
-        <div className="md:hidden mx-auto max-w-7xl mt-3 rounded-3xl border border-white/15 bg-black/70 backdrop-blur-2xl px-4 py-4 text-sm text-white/80 space-y-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="md:hidden mx-auto max-w-7xl mt-3 rounded-3xl border border-white/15 bg-black/70 backdrop-blur-2xl px-4 py-4 text-sm text-white/80 space-y-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]"
+        >
           <a
             href="/"
             className="block px-2 py-2 rounded-xl hover:bg-white/10"
@@ -176,7 +175,7 @@ const Nav = () => {
           >
             Attiva Cerbero
           </a>
-        </div>
+        </motion.div>
       )}
     </header>
   );
@@ -225,17 +224,8 @@ const Card = ({
   </div>
 );
 
-const Pill = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/80">
-    {children}
-  </span>
-);
-
 // —————————————————————————————————————————————————————————
-// HERO
-// —————————————————————————————————————————————————————————
-// —————————————————————————————————————————————————————————
-// HERO (versione senza style dinamici → niente errori di hydration)
+// HERO futurizzato
 // —————————————————————————————————————————————————————————
 const Hero = () => (
   <section
@@ -246,36 +236,56 @@ const Hero = () => (
       {/* Colonna sinistra: testo + CTA */}
       <div className="space-y-6">
         {/* Badge sopra il titolo */}
-        <div className="flex flex-wrap gap-2 text-xs text-white/70">
+        <motion.div
+          className="flex flex-wrap gap-2 text-xs text-white/70"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+        >
           <span className="rounded-full bg-white/5 px-3 py-1 border border-white/10">
-            AI + DeFi Ecosystem
+            AI Wealth Management
           </span>
           <span className="rounded-full bg-white/5 px-3 py-1 border border-white/10">
-            Designed for real money
+            Autotrading su Arbitrum One
           </span>
-        </div>
+        </motion.div>
 
         {/* Titolo principale */}
-        <h1 className="text-3xl sm:text-4xl lg:text-[2.8rem] font-semibold leading-tight tracking-tight">
+        <motion.h1
+          className="text-3xl sm:text-4xl lg:text-[2.8rem] font-semibold leading-tight tracking-tight"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
           Cerbero — Switch On.
           <br />
           <span className="text-white/90">Sit back and Relax.</span>
-        </h1>
+        </motion.h1>
 
         {/* Sottotitolo */}
-        <p className="max-w-xl text-sm sm:text-base text-white/70">
-          Accendi Cerbero, scegli il tuo pilota (manuale o autopilot) e lascia che
-          l’AI gestisca i mercati al posto tuo. Tu continui la tua vita, noi ci
-          occupiamo del rumore.
-        </p>
+        <motion.p
+          className="max-w-xl text-sm sm:text-base text-white/70"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+        >
+          Accendi Cerbero, attivi l’Autopilot e lasci che la Coscienza AI gestisca
+          i mercati al posto tuo. Tu continui la tua vita, noi ci occupiamo del
+          rumore.
+        </motion.p>
 
         {/* CTA principali */}
-        <div className="flex flex-wrap gap-3 pt-1">
+        <motion.div
+          className="flex flex-wrap gap-3 pt-1"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
           <a
             href="/pricing"
             className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold bg-white text-[#050816] hover:opacity-90 transition shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
           >
-            Vedi i piani
+            Attiva Autopilot 80€/mese
           </a>
           <a
             href="/trust"
@@ -283,16 +293,26 @@ const Hero = () => (
           >
             Come funziona
           </a>
-        </div>
+        </motion.div>
 
         {/* Disclaimer breve */}
-        <p className="text-xs text-white/45 max-w-md pt-1">
+        <motion.p
+          className="text-xs text-white/45 max-w-md pt-1"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+        >
           Nessuna consulenza finanziaria. Il capitale è sempre nel tuo smart
           contract 1-a-1.
-        </p>
+        </motion.p>
 
-        {/* 🔹 NUOVA STRISCIATA DI FIDUCIA / PARTNER */}
-        <div className="mt-6 flex flex-wrap items-center gap-3 text-[11px] text-white/50">
+        {/* Striscia partner */}
+        <motion.div
+          className="mt-6 flex flex-wrap items-center gap-3 text-[11px] text-white/50"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+        >
           <span className="uppercase tracking-[0.18em] text-[10px] text-white/40">
             Powered by
           </span>
@@ -309,12 +329,26 @@ const Hero = () => (
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
             Gains Network (GNS)
           </span>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Colonna destra: Cerbero Index card (placeholder) */}
+      {/* Colonna destra: Cerbero Index card + halo */}
       <div className="relative">
-        <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-5 sm:p-6 lg:p-7 shadow-[0_22px_70px_rgba(0,0,0,0.75)]">
+        {/* Halo orb dietro la card */}
+        <motion.div
+          className="pointer-events-none absolute -top-10 -right-6 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 0.9, scale: 1 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+        />
+
+        <motion.div
+          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-5 sm:p-6 lg:p-7 shadow-[0_22px_70px_rgba(0,0,0,0.75)]"
+          initial={{ opacity: 0, y: 24, rotateX: 8 }}
+          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+          transition={{ delay: 0.35, duration: 0.7, ease: "easeOut" }}
+          whileHover={{ y: -4, scale: 1.01 }}
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.16em] text-white/45">
@@ -330,14 +364,21 @@ const Hero = () => (
           {/* Placeholder grafico */}
           <div className="h-40 sm:h-44 rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative">
             <div className="absolute inset-0 opacity-60">
-              {/* Barre mock */}
               <div className="flex h-full items-end gap-[3px] px-4">
                 {Array.from({ length: 32 }).map((_, i) => (
-                  <div
+                  <motion.div
                     key={i}
                     className="flex-1 rounded-t-full bg-gradient-to-t from-cyan-400/10 via-cyan-400/60 to-white/90"
                     style={{
                       height: `${20 + ((i * 37) % 60)}%`,
+                    }}
+                    animate={{
+                      opacity: [0.4, 1, 0.4],
+                    }}
+                    transition={{
+                      duration: 2.4,
+                      repeat: Infinity,
+                      delay: i * 0.03,
                     }}
                   />
                 ))}
@@ -350,7 +391,7 @@ const Hero = () => (
           <div className="mt-4 grid gap-3 sm:grid-cols-3 text-[11px]">
             <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
               <div className="text-white/50 mb-1">Modo</div>
-              <div className="text-white/85 font-medium">Pilot / Autopilot</div>
+              <div className="text-white/85 font-medium">Autopilot</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
               <div className="text-white/50 mb-1">Focus</div>
@@ -361,7 +402,7 @@ const Hero = () => (
               <div className="text-emerald-400 font-medium">Pronto per v1</div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   </section>
@@ -374,31 +415,35 @@ const ValueSection = () => (
   <Section
     id="value"
     title="Perché Cerbero"
-    subtitle="Non devi diventare trader. Devi solo scegliere come vuoi che il tuo pilota lavori per te."
+    subtitle="Non devi diventare trader. Devi solo accendere l’Autopilot e lasciare che la Coscienza lavori per te."
   >
     <div className="grid md:grid-cols-3 gap-5">
       <Card>
-        <div className="text-sm text-white/70 mb-2">Pilot (40€/mese)</div>
-        <h3 className="text-lg font-semibold mb-2">Workstation 3.0</h3>
-        <p className="text-sm text-white/75">
-          Trading manuale con Copilota AI. Tu clicchi, la Coscienza ti aiuta a
-          leggere il mercato con probabilità e contesto.
-        </p>
-      </Card>
-      <Card>
-        <div className="text-sm text-white/70 mb-2">Autopilot (80€/mese)</div>
+        <div className="text-sm text-white/70 mb-2">Autopilot 80€/mese</div>
         <h3 className="text-lg font-semibold mb-2">Coscienza AI always-on</h3>
         <p className="text-sm text-white/75">
-          Autotrading completo: monitoraggio continuo, scudi di protezione e
+          Autotrading completo: monitoraggio continuo, esecuzione disciplinata e
           interruttore ON/OFF sempre sotto il tuo controllo.
         </p>
       </Card>
       <Card>
-        <div className="text-sm text-white/70 mb-2">Ponte 1-a-1</div>
-        <h3 className="text-lg font-semibold mb-2">I tuoi soldi, il tuo contratto</h3>
+        <div className="text-sm text-white/70 mb-2">Smart contract 1-a-1</div>
+        <h3 className="text-lg font-semibold mb-2">
+          Il tuo capitale, la tua cassaforte
+        </h3>
         <p className="text-sm text-white/75">
-          I fondi passano dalla banca alla tua cassaforte on-chain. Noi abbiamo
-          solo il telecomando operativo, non le chiavi della cassaforte.
+          I fondi vivono nel tuo smart contract dedicato. Cerbero può solo
+          operare secondo le regole che hai approvato, non toccare il saldo.
+        </p>
+      </Card>
+      <Card>
+        <div className="text-sm text-white/70 mb-2">AI-native</div>
+        <h3 className="text-lg font-semibold mb-2">
+          Costruito per i mercati 24/7
+        </h3>
+        <p className="text-sm text-white/75">
+          La Coscienza non dorme: ascolta il flusso dei mercati, filtra il rumore
+          e reagisce secondo parametri probabilistici, non emozionali.
         </p>
       </Card>
     </div>
@@ -406,7 +451,7 @@ const ValueSection = () => (
 );
 
 // —————————————————————————————————————————————————————————
-// FOOTER SEMPLICE
+// FOOTER
 // —————————————————————————————————————————————————————————
 const Footer = () => (
   <footer
