@@ -1,10 +1,18 @@
 "use client";
 
+import React, { useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import React, { useRef } from "react";
+
+// Tipo per la risposta di /api/me
+type MeResponse = {
+  ok: boolean;
+  email: string | null;
+  wallet: string | null;
+  sub: string | null;
+};
 
 // Mock P&L mese (in futuro prenderemo il dato reale)
 const PNL_MONTHLY = 4.5;
@@ -41,11 +49,7 @@ function CerberoOrb3D() {
       {/* disco di glow dietro */}
       <mesh>
         <circleGeometry args={[1.5, 64]} />
-        <meshBasicMaterial
-          color={glowColor}
-          transparent
-          opacity={0.18}
-        />
+        <meshBasicMaterial color={glowColor} transparent opacity={0.18} />
       </mesh>
 
       {/* piano con logo C, quasi sempre frontale */}
@@ -75,6 +79,56 @@ function CerberoOrb3D() {
 }
 
 export default function DashboardPage() {
+  // Stato sessione utente (da /api/me)
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // leggiamo il token dal localStorage (solo client-side)
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("cerbero_session")
+        : null;
+
+    // se non c'è token → via alla login
+    if (!token) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      return;
+    }
+
+    const fetchMe = async () => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error("invalid session");
+        }
+
+        setMe(data);
+      } catch (err) {
+        console.error("[dashboard] /api/me error:", err);
+        // puliamo il token e rimandiamo a login
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("cerbero_session");
+          window.location.href = "/login";
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMe();
+  }, []);
+
   const glowColor = getGlowColor(PNL_MONTHLY);
 
   return (
@@ -122,6 +176,36 @@ export default function DashboardPage() {
 
       {/* Contenuto principale */}
       <section className="flex-1 px-4 md:px-8 py-6 md:py-8">
+        {/* Banner stato sessione (email + wallet) */}
+        {loading && (
+          <div className="w-full flex justify-center py-4 mb-4 text-sm text-white/60">
+            Sto caricando il tuo account...
+          </div>
+        )}
+
+        {!loading && me && (
+          <div className="w-full flex items-center justify-between gap-4 mb-6 text-xs md:text-sm text-white/70 px-4 py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
+            <div className="flex flex-col">
+              <span className="uppercase tracking-[0.2em] text-[10px] text-white/40">
+                Utente collegato
+              </span>
+              <span className="font-medium">
+                {me.email || "utente senza email"}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="uppercase tracking-[0.2em] text-[10px] text-white/40">
+                Wallet Magic
+              </span>
+              <div className="font-mono text-[11px] md:text-xs">
+                {me.wallet
+                  ? `${me.wallet.slice(0, 6)}…${me.wallet.slice(-4)}`
+                  : "non disponibile"}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
