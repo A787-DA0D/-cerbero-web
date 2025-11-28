@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 // Cerbero Web v1 — Landing futurizzata (Autopilot only)
 
@@ -46,21 +46,28 @@ const ui = {
 };
 
 // motion presets
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
-  visible: (delay = 0) => ({
+  visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut", delay },
-  }),
+    transition: {
+      duration: 0.6,
+      ease: [0.16, 1, 0.3, 1], // curva tipo "easeOut" ma come Easing valido
+      // se vuoi un piccolo delay fisso, puoi aggiungere: delay: 0.1,
+    },
+  },
 };
 
-const fadeIn = {
+const fadeIn: Variants = {
   hidden: { opacity: 0 },
-  visible: (delay = 0) => ({
+  visible: {
     opacity: 1,
-    transition: { duration: 0.7, ease: "easeOut", delay },
-  }),
+    transition: {
+      duration: 0.6,
+      ease: "easeOut",
+    },
+  },
 };
 
 // Shell di base con background gradient
