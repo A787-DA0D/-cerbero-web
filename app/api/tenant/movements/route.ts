@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const result = await db.query(query, values);
 
     // Mappiamo in un formato comodo per il frontend wallet
-    const movements = result.rows.map((row) => {
+    const movements = result.rows.map((row: any) => {
       const amountNumber = Number(row.amount_usdc) || 0;
       const isPositive = amountNumber >= 0;
       const signedAmount = `${isPositive ? "+" : ""}${amountNumber.toFixed(2)} USDC`;
