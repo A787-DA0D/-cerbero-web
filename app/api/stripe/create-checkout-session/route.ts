@@ -9,15 +9,8 @@ const STRIPE_PRICE_ID_AUTOPILOT = process.env
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const JWT_SECRET = process.env.JWT_SECRET as string | undefined;
 
-if (!STRIPE_SECRET_KEY) {
-  console.warn("[Stripe] STRIPE_SECRET_KEY non impostata");
-}
-
-const stripe = STRIPE_SECRET_KEY
-  ? new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: "2024-06-20",
-    })
-  : null;
+// Inizializza Stripe SENZA apiVersion (lasciamo quella di default)
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 type Body = {
   email?: string; // solo per test in dev, come fallback
