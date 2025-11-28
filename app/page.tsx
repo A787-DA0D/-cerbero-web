@@ -53,8 +53,7 @@ const fadeUp: Variants = {
     y: 0,
     transition: {
       duration: 0.6,
-      ease: [0.16, 1, 0.3, 1], // curva tipo "easeOut" ma come Easing valido
-      // se vuoi un piccolo delay fisso, puoi aggiungere: delay: 0.1,
+      ease: [0.16, 1, 0.3, 1],
     },
   },
 };
@@ -70,31 +69,34 @@ const fadeIn: Variants = {
   },
 };
 
-// Shell di base con background gradient
+// —————————————————————————————————————————————————————————
+// SHELL con VIDEO di sfondo
+// —————————————————————————————————————————————————————————
 const Shell = ({ children }: { children: React.ReactNode }) => (
   <div
-    className="min-h-screen w-full bg-gradient-to-b from-[#0a1020] via-[#0e1731] to-white text-white"
+    className="relative min-h-screen w-full overflow-hidden text-white"
     style={{ fontFamily: ui.fonts.body }}
   >
-    <div className="absolute inset-0 pointer-events-none" aria-hidden>
-      <div
-        className="absolute -top-32 right-0 w-[40rem] h-[40rem] rounded-full blur-3xl opacity-25"
-        style={{
-          background: "radial-gradient(closest-side, #22d3ee, transparent)",
-        }}
-      />
-      <div
-        className="absolute -bottom-40 -left-24 w-[40rem] h-[40rem] rounded-full blur-3xl opacity-25"
-        style={{
-          background: "radial-gradient(closest-side, #4f7cff, transparent)",
-        }}
-      />
+    {/* VIDEO DI SFONDO */}
+    <video
+      className="absolute inset-0 h-full w-full object-cover"
+      src="/videos/landing-bg.mp4"
+      autoPlay
+      loop
+      muted
+      playsInline
+    />
+
+    {/* Contenuto sopra il video (senza overlay, solo pannelli glass) */}
+    <div className="relative z-10 min-h-screen">
+      {children}
     </div>
-    <div className="relative">{children}</div>
   </div>
 );
 
+// —————————————————————————————————————————————————————————
 // NAVBAR futuristica con menu mobile
+// —————————————————————————————————————————————————————————
 const Nav = () => {
   const [open, setOpen] = useState(false);
 
@@ -106,30 +108,28 @@ const Nav = () => {
       animate="visible"
       custom={0}
     >
-      <div className="mx-auto max-w-7xl rounded-3xl border border-white/15 bg-white/5/60 backdrop-blur-2xl px-4 sm:px-6 py-3 flex items-center justify-between shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
+      <div className="mx-auto max-w-7xl rounded-3xl border border-white/20 bg-black/70 backdrop-blur-2xl px-4 sm:px-6 py-3 flex items-center justify-between shadow-[0_18px_60px_rgba(0,0,0,0.7)]">
         {/* Logo + nome */}
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-2xl bg-black/60 border border-white/20 flex items-center justify-center overflow-hidden">
-            <Image
-              src="/branding/cerbero-logo.svg"
-              alt="Cerbero logo"
-              width={32}
-              height={32}
-              className="object-contain"
-            />
-          </div>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/branding/cerbero-logo.svg"
+            alt="Cerbero logo"
+            width={40}
+            height={40}
+            className="h-10 w-10 drop-shadow-[0_0_18px_rgba(56,189,248,0.9)]"
+          />
           <div className="flex flex-col leading-tight">
             <span className="text-base md:text-lg font-semibold tracking-tight">
-              Cerbero <span className="text-white/60">AI</span>
+              Cerbero <span className="text-cyan-300">AI</span>
             </span>
-            <span className="text-[10px] md:text-[11px] text-white/50">
-              Switch On. Sit back and Relax.
+            <span className="text-[10px] md:text-[11px] text-white/60">
+              Switch On. Sit back. Relax.
             </span>
           </div>
         </div>
 
         {/* Menu desktop */}
-        <nav className="hidden md:flex items-center gap-6 text-sm text-white/80">
+        <nav className="hidden md:flex items-center gap-6 text-sm md:text-base font-semibold text-white/80">
           <a href="/" className="hover:text-white transition">
             Home
           </a>
@@ -148,7 +148,7 @@ const Nav = () => {
         <div className="flex items-center gap-3">
           <a
             href="/pricing"
-            className="hidden sm:inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium bg-white text-[#0a1020] hover:opacity-90 transition shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+            className="hidden sm:inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold bg-white text-[#0a1020] hover:opacity-90 transition shadow-[0_12px_40px_rgba(0,0,0,0.7)]"
           >
             Attiva Autopilot
           </a>
@@ -156,7 +156,7 @@ const Nav = () => {
           {/* Burger mobile */}
           <button
             onClick={() => setOpen(!open)}
-            className="md:hidden inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/5 p-2 active:scale-95 transition"
+            className="md:hidden inline-flex items-center justify-center rounded-xl border border-white/40 bg-black/60 p-2 active:scale-95 transition"
             aria-label="Apri menu"
           >
             <span className="w-4 h-[1.5px] bg-white block mb-1" />
@@ -169,7 +169,7 @@ const Nav = () => {
       {/* Pannello mobile */}
       {open && (
         <motion.div
-          className="md:hidden mx-auto max-w-7xl mt-3 rounded-3xl border border-white/15 bg-black/70 backdrop-blur-2xl px-4 py-4 text-sm text-white/80 space-y-2 shadow-[0_18px_60px_rgba(0,0,0,0.65)]"
+          className="md:hidden mx-auto max-w-7xl mt-3 rounded-3xl border border-white/20 bg-black/80 backdrop-blur-2xl px-4 py-4 text-sm text-white/80 space-y-2 shadow-[0_18px_60px_rgba(0,0,0,0.8)]"
           variants={fadeIn}
           initial="hidden"
           animate="visible"
@@ -206,7 +206,7 @@ const Nav = () => {
 
           <a
             href="/signup"
-            className="mt-2 inline-flex w-full justify-center rounded-2xl bg-white text-[#0a1020] font-medium px-4 py-2.5 hover:opacity-90 transition"
+            className="mt-2 inline-flex w-full justify-center rounded-2xl bg-white text-[#0a1020] font-semibold px-4 py-2.5 hover:opacity-90 transition"
             onClick={() => setOpen(false)}
           >
             Attiva Autopilot
@@ -243,7 +243,9 @@ const Section = ({
             {title}
           </h2>
           {subtitle && (
-            <p className="mt-3 text-white/70 max-w-2xl">{subtitle}</p>
+            <p className="mt-3 text-white/90 font-semibold max-w-2xl">
+              {subtitle}
+            </p>
           )}
         </motion.div>
       )}
@@ -262,7 +264,7 @@ const Card = ({
   delay?: number;
 }) => (
   <motion.div
-    className={`rounded-3xl p-6 bg-white/10 backdrop-blur-xl border border-white/15 ${className}`}
+    className={`rounded-3xl p-6 bg-black/70 backdrop-blur-xl border border-white/15 ${className}`}
     style={{ boxShadow: ui.shadow.glass }}
     variants={fadeUp}
     initial="hidden"
@@ -299,10 +301,10 @@ const Hero = () => (
       >
         {/* Badge sopra il titolo */}
         <div className="flex flex-wrap gap-2 text-xs text-white/70">
-          <span className="rounded-full bg-white/5 px-3 py-1 border border-white/10">
+          <span className="rounded-full bg-black/60 px-3 py-1 border border-white/15 backdrop-blur-xl">
             AI Wealth Management
           </span>
-          <span className="rounded-full bg-white/5 px-3 py-1 border border-white/10">
+          <span className="rounded-full bg-black/60 px-3 py-1 border border-white/15 backdrop-blur-xl">
             Autotrading su Arbitrum One
           </span>
         </div>
@@ -315,9 +317,11 @@ const Hero = () => (
         </h1>
 
         {/* Sottotitolo */}
-        <p className="max-w-xl text-sm sm:text-base text-white/70">
+        <p className="max-w-xl text-sm sm:text;base text-white/90 font-semibold">
           Accendi Cerbero, attivi l&apos;Autopilot e lasci che la Coscienza AI
-          gestisca i mercati al posto tuo. Tu continui la tua vita, noi ci
+          operi sul tuo{" "}
+          <span className="font-semibold">portafoglio digitale dedicato</span>{" "}
+          secondo i parametri che imposti. Tu continui la tua vita, noi ci
           occupiamo del rumore.
         </p>
 
@@ -325,40 +329,40 @@ const Hero = () => (
         <div className="flex flex-wrap gap-3 pt-1">
           <a
             href="/pricing"
-            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold bg-white text-[#050816] hover:opacity-90 transition shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
+            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold bg-white text-[#050816] hover:opacity-90 transition shadow-[0_16px_40px_rgba(0,0,0,0.75)]"
           >
-            Attiva Autopilot 80€/mese
+            Attiva Autopilot 99€/mese
           </a>
           <a
             href="/trust"
-            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-medium border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
+            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-medium border border-white/25 bg-black/60 text-white hover:bg-black/80 backdrop-blur-xl transition"
           >
             Come funziona
           </a>
         </div>
 
         {/* Disclaimer breve */}
-        <p className="text-xs text-white/45 max-w-md pt-1">
-          Nessuna consulenza finanziaria. Il capitale è sempre nel tuo smart
-          contract 1-a-1.
+        <p className="text-xs text-white/60 max-w-md pt-1">
+          Nessuna consulenza finanziaria. Il capitale resta sempre nel tuo
+          portafoglio digitale dedicato.
         </p>
 
         {/* Striscia partner */}
-        <div className="mt-6 flex flex-wrap items-center gap-3 text-[11px] text-white/50">
-          <span className="uppercase tracking-[0.18em] text-[10px] text-white/40">
+        <div className="mt-6 flex flex-wrap items-center gap-3 text-[11px] text-white/60">
+          <span className="uppercase tracking-[0.18em] text-[10px] text-white/50">
             Powered by
           </span>
 
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+          <span className="rounded-full border border-white/15 bg-black/60 px-3 py-1 backdrop-blur-xl">
             Google Cloud
           </span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+          <span className="rounded-full border border-white/15 bg-black/60 px-3 py-1 backdrop-blur-xl">
             Arbitrum One
           </span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+          <span className="rounded-full border border-white/15 bg-black/60 px-3 py-1 backdrop-blur-xl">
             USDC (Circle)
           </span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+          <span className="rounded-full border border-white/15 bg-black/60 px-3 py-1 backdrop-blur-xl">
             Gains Network (GNS)
           </span>
         </div>
@@ -373,25 +377,25 @@ const Hero = () => (
         custom={0.15}
       >
         <motion.div
-          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-5 sm:p-6 lg:p-7 shadow-[0_22px_70px_rgba(0,0,0,0.75)]"
-          whileHover={{ y: -6, boxShadow: "0 26px 80px rgba(0,0,0,0.9)" }}
+          className="rounded-3xl border border-white/15 bg-black/70 backdrop-blur-2xl p-5 sm:p-6 lg:p-7 shadow-[0_22px_70px_rgba(0,0,0,0.9)]"
+          whileHover={{ y: -6, boxShadow: "0 26px 80px rgba(0,0,0,1)" }}
           transition={{ type: "spring", stiffness: 220, damping: 22 }}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items:center justify-between mb-4">
             <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.16em] text-white/45">
+              <p className="text-xs uppercase tracking-[0.16em] text-white/50">
                 Cerbero Index
               </p>
-              <p className="text-sm text-white/80">Coming soon</p>
+              <p className="text-sm text-white/85">Coming soon</p>
             </div>
-            <button className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/70">
+            <button className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] text-white/80">
               Preview
             </button>
           </div>
 
           {/* Placeholder grafico */}
-          <div className="h-40 sm:h-44 rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative">
-            <div className="absolute inset-0 opacity-70">
+          <div className="h-40 sm:h-44 rounded-2xl bg-black/60 border border-white/15 overflow-hidden relative">
+            <div className="absolute inset-0 opacity-80">
               {/* Barre mock animate */}
               <motion.div
                 className="flex h-full items-end gap-[3px] px-4"
@@ -401,7 +405,7 @@ const Hero = () => (
                 {Array.from({ length: 40 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex-1 rounded-t-full bg-gradient-to-t from-cyan-400/10 via-cyan-400/60 to-white/90"
+                    className="flex-1 rounded-t-full bg-gradient-to-t from-cyan-400/10 via-cyan-400/70 to-white/95"
                     style={{
                       height: `${20 + ((i * 37) % 60)}%`,
                     }}
@@ -414,15 +418,17 @@ const Hero = () => (
 
           {/* Pilloline sotto grafico */}
           <div className="mt-4 grid gap-3 sm:grid-cols-3 text-[11px]">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-2">
               <div className="text-white/50 mb-1">Modo</div>
-              <div className="text-white/85 font-medium">Autopilot</div>
+              <div className="text-white/90 font-medium">Autopilot</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-2">
               <div className="text-white/50 mb-1">Focus</div>
-              <div className="text-white/85 font-medium">Euro-in / Euro-out</div>
+              <div className="text-white/90 font-medium">
+                Euro-in / Euro-out
+              </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-2">
               <div className="text-white/50 mb-1">Stato</div>
               <div className="text-emerald-400 font-medium">Pronto per v1</div>
             </div>
@@ -440,32 +446,32 @@ const ValueSection = () => (
   <Section
     id="value"
     title="Perché Cerbero"
-    subtitle="Non devi diventare trader. Devi solo accendere la Coscienza AI e lasciare che gestisca il capitale nel tuo smart contract 1-a-1."
+    subtitle="Non devi diventare trader. Devi solo accendere la Coscienza AI e lasciare che operi sul capitale nel tuo portafoglio digitale, che resta sempre sotto il tuo controllo."
   >
     <div className="grid md:grid-cols-3 gap-5">
       <Card delay={0.05}>
         <div className="text-sm text-emerald-300 mb-1 font-medium">
-          Autopilot · 80€/mese
+          Autopilot · 99€/mese
         </div>
         <h3 className="text-lg font-semibold mb-2">
           Coscienza AI always-on
         </h3>
-        <p className="text-sm text-white/75">
+        <p className="text-sm text-white/80">
           Cerbero monitora i mercati in tempo reale, apre e chiude operazioni
-          secondo i parametri di rischio definiti. Tu vedi tutto, puoi mettere
-          in pausa quando vuoi.
+          secondo i parametri di rischio che imposti. Tu vedi tutto, puoi
+          mettere in pausa quando vuoi dal Wallet.
         </p>
       </Card>
 
       <Card delay={0.12}>
-        <div className="text-sm text-white/70 mb-1">Ponte 1-a-1</div>
+        <div className="text-sm text-white/70 mb-1">Portafoglio dedicato</div>
         <h3 className="text-lg font-semibold mb-2">
-          Il tuo smart contract personale
+          Il tuo portafoglio digitale personale
         </h3>
-        <p className="text-sm text-white/75">
-          I fondi passano dalla banca alla tua cassaforte on-chain. Il capitale
-          è sempre nel tuo smart contract 1-a-1; Cerbero ha il telecomando
-          operativo, non le chiavi della cassaforte.
+        <p className="text-sm text-white/80">
+          I fondi passano dalla banca al tuo portafoglio digitale dedicato.
+          Cerbero ha il telecomando operativo, non le chiavi per spostare i
+          fondi. Puoi verificare tutto quando vuoi.
         </p>
       </Card>
 
@@ -474,7 +480,7 @@ const ValueSection = () => (
         <h3 className="text-lg font-semibold mb-2">
           Infrastruttura, non promesse
         </h3>
-        <p className="text-sm text-white/75">
+        <p className="text-sm text-white/80">
           Google Cloud per l&apos;infrastruttura, Arbitrum One + USDC native
           on-chain, esecuzione su Gains Network. Tutto tracciabile,
           osservabile, auditabile.
@@ -494,56 +500,83 @@ const Footer = () => (
     <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
       <div>
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-2xl grid place-items-center bg-white/10 border border-white/15">
-            <span className="text-xl font-bold">C</span>
+          <div className="w-9 h-9 rounded-2xl bg-black/60 border border-white/20 flex items-center justify-center overflow-hidden">
+            <Image
+              src="/branding/cerbero-logo.svg"
+              alt="Cerbero logo"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
           </div>
-          <div className="text-sm font-semibold">Cerbero AI</div>
+          <div className="text-sm font-semibold">
+            Cerbero <span className="text-cyan-300">AI</span>
+          </div>
         </div>
         <p className="mt-3 text-xs text-white/60">
           © {new Date().getFullYear()} Cerbero. All rights reserved.
         </p>
       </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
         <div>
-          <div className="text-white/70 mb-2">Prodotto</div>
           <ul className="space-y-1">
             <li>
-              <a className="hover:underline text-white/80" href="/pricing">
+              <a
+                className="hover:underline text-white/90 font-semibold"
+                href="/pricing"
+              >
                 Pricing
               </a>
             </li>
             <li>
-              <a className="hover:underline text-white/80" href="/trust">
+              <a
+                className="hover:underline text-white/90 font-semibold"
+                href="/trust"
+              >
                 Come funziona
               </a>
             </li>
           </ul>
         </div>
+
         <div>
-          <div className="text-white/70 mb-2">Account</div>
           <ul className="space-y-1">
             <li>
-              <a className="hover:underline text-white/80" href="/login">
+              <a
+                className="hover:underline text-white/90 font-semibold"
+                href="/login"
+              >
                 Login
               </a>
             </li>
             <li>
-              <a className="hover:underline text-white/80" href="/signup">
+              <a
+                className="hover:underline text-white/90 font-semibold"
+                href="/signup"
+              >
                 Registrati
               </a>
             </li>
           </ul>
         </div>
+
         <div>
           <div className="text-white/70 mb-2">Legal</div>
           <ul className="space-y-1">
             <li>
-              <a className="hover:underline text-white/80" href="#">
+              <a
+                className="hover:underline text-white/90 font-semibold"
+                href="#"
+              >
                 Privacy
               </a>
             </li>
             <li>
-              <a className="hover:underline text-white/80" href="#">
+              <a
+                className="hover:underline text-white/90 font-semibold"
+                href="#"
+              >
                 Disclaimer
               </a>
             </li>
