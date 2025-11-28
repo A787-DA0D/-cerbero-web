@@ -24,3 +24,20 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer utilities {
+  /* Blu profondo Cerbero (per dashboard / wallet / app core) */
+  .bg-cerbero-core {
+    @apply bg-gradient-to-b from-[#050816] via-[#071329] to-[#020617];
+  }
+
+  /* Blu → bianco, mood "trasparenza" (Trust, Pricing, Login, Signup) */
+  .bg-cerbero-trust {
+    @apply bg-gradient-to-b from-[#050816] via-[#071329] to-[#f5f5f5];
+  }
+
+  /* Porta di accesso (se un giorno vorrai un gate un po' più scuro) */
+  .bg-cerbero-gate {
+    @apply bg-gradient-to-b from-[#050816] via-[#020617] to-[#0b1120];
+  }
+}

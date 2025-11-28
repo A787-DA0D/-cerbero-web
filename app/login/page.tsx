@@ -2,14 +2,17 @@
 
 import React, { useState } from "react";
 import { Magic } from "magic-sdk";
+import Image from "next/image";
 
-// Singleton Magic (client-side)
+// Istanza singleton di Magic sul client
 let magic: Magic | null = null;
 
 function getMagic() {
   if (!magic) {
     const key = process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY;
-    if (!key) throw new Error("NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY mancante");
+    if (!key) {
+      throw new Error("NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY mancante");
+    }
     magic = new Magic(key);
   }
   return magic;
@@ -27,18 +30,28 @@ export default function LoginPage() {
 
     try {
       const m = getMagic();
+
+      // 1) Magic invia la mail e genera il DID token
       const didToken = await m.auth.loginWithMagicLink({ email });
 
+      // 2) Mandiamo il DID token al nostro backend
       const res = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { Authorization: `Bearer ${didToken}` },
+        headers: {
+          Authorization: `Bearer ${didToken}`,
+        },
       });
 
       const data = await res.json();
-      if (!res.ok || !data.sessionToken)
-        throw new Error(data.error || "Login non riuscito");
 
+      if (!res.ok || !data.sessionToken) {
+        throw new Error(data.error || "Login non riuscito");
+      }
+
+      // 3) Salviamo il token di sessione (per ora localStorage)
       localStorage.setItem("cerbero_session", data.sessionToken);
+
+      // 4) Redirect alla dashboard interna
       window.location.href = "/dashboard";
     } catch (err) {
       console.error(err);
@@ -49,117 +62,157 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 bg-[#050816] bg-gradient-to-b from-[#050816] via-[#040414] to-[#050816]">
-      <div className="max-w-5xl w-full mx-auto">
-        <div className="relative mx-auto flex flex-col md:flex-row gap-10 rounded-[32px] bg-black/40 border border-white/10 px-8 py-10 md:px-12 md:py-12 backdrop-blur-2xl shadow-[0_35px_120px_rgba(0,0,0,0.65)]">
-          
-          {/* Colonna sinistra (testo) */}
-          <div className="flex-1 space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Cerbero App · Accesso Sicuro
-            </div>
+    <main className="relative min-h-screen w-full overflow-hidden bg-none text-white">
+      {/* VIDEO DI SFONDO */}
+      <video
+        className="absolute inset-0 h-full w-full object-cover"
+        src="/videos/login-bg.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
 
-            <div>
-              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">
-                Accedi a Cerbero
-              </h1>
-              <p className="mt-3 text-sm md:text-base text-white/70 leading-relaxed">
-                Entra nella tua dashboard e controlla il tuo pilota Autopilot,
-                saldo e operatività.  
-                Login{" "}
-                <span className="font-semibold text-white">senza password</span>:  
-                ricevi un link magico via email.
+      {/* CONTENUTO */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-5xl w-full mx-auto">
+          <div className="mx-auto flex flex-col md:flex-row gap-10 rounded-[32px] bg-black/60 border border-white/10 px-8 py-10 md:px-12 md:py-12 shadow-[0_40px_120px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+            {/* Colonna sinistra: logo + testo / highlights */}
+            <div className="flex-1 space-y-6">
+              {/* Logo + naming con glow e pulsazione */}
+              <div className="flex items-center gap-4">
+                <div className="relative h-14 w-14 flex items-center justify-center">
+                  {/* alone di luce sincronizzato col video (cyan) */}
+                  <div
+                    className="absolute inset-0 rounded-full bg-cyan-400/35 blur-xl opacity-70 animate-pulse"
+                    aria-hidden
+                  />
+                  <Image
+                    src="/branding/cerbero-logo.svg"
+                    alt="Cerbero AI logo"
+                    width={56}
+                    height={56}
+                    className="relative z-10 select-none pointer-events-none drop-shadow-[0_0_18px_rgba(56,189,248,0.9)]"
+                  />
+                </div>
+
+                <div className="flex flex-col leading-tight">
+                  <span className="text-sm font-semibold tracking-tight text-white">
+                    Cerbero <span className="text-emerald-300">AI</span>
+                  </span>
+                  <span className="text-[11px] text-white/60">
+                    Switch On. Sit back. Relax.
+                  </span>
+                </div>
+              </div>
+
+              {/* Badge sopra il titolo */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium tracking-wide uppercase text-emerald-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Cerbero App · Accesso sicuro
+              </div>
+
+              {/* Titolo + descrizione */}
+              <div>
+                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">
+                  Accedi a Cerbero <span className="text-emerald-300">AI</span>
+                </h1>
+                <p className="mt-3 text-sm md:text-base text-slate-300/90 leading-relaxed">
+                  Entra nella tua dashboard per controllare saldo, pilota e operatività.
+                  Login <span className="font-semibold text-white">senza password</span>: ti
+                  inviamo un link magico via email, valido solo per te.
+                </p>
+              </div>
+
+              {/* Punti chiave */}
+              <ul className="space-y-2 text-sm text-slate-200/90">
+                <li className="flex items-start gap-2">
+                  <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span>Smart contract 1-a-1 su Arbitrum One.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span>Login gestito da Magic Link + stack Google Cloud.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span>Nessuna password da ricordare, solo la tua email personale.</span>
+                </li>
+              </ul>
+
+              <p className="text-[11px] text-slate-400">
+                Nessuna consulenza finanziaria. Il capitale è sempre nel tuo smart contract
+                1-a-1.
               </p>
             </div>
 
-            <ul className="space-y-2 text-sm text-white/75">
-              <li className="flex items-start gap-2">
-                <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Smart contract 1-a-1 su Arbitrum One.
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Login gestito da Magic Link + Google Cloud.
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Nessuna password: solo la tua email personale.
-              </li>
-            </ul>
-
-            <p className="text-[11px] text-white/40">
-              Nessuna consulenza finanziaria. Il capitale resta nel tuo smart
-              contract personale.
-            </p>
-          </div>
-
-          {/* Colonna destra (login card) */}
-          <div className="flex-1">
-            <div className="mx-auto max-w-md rounded-3xl bg-black/50 border border-white/10 px-6 py-7 md:px-7 md:py-8 backdrop-blur-xl shadow-[0_30px_80px_rgba(0,0,0,0.85)]">
-              
-              <div className="flex items-center justify-between text-[11px] font-medium text-white/70 mb-4">
-                <span className="uppercase tracking-[0.15em] text-white/50">
-                  Accesso
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-300 border border-emerald-500/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Coscienza AI attiva
-                </span>
-              </div>
-
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="email"
-                    className="text-xs font-medium text-white/80"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    placeholder="nome@esempio.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/70"
-                  />
-                  <p className="text-[11px] text-white/40">
-                    Login crittografato tramite Magic Link.
-                  </p>
+            {/* Colonna destra: card di login */}
+            <div className="flex-1">
+              <div className="mx-auto max-w-md rounded-3xl bg-slate-950/80 border border-white/15 px-6 py-7 md:px-7 md:py-8 shadow-[0_30px_80px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
+                <div className="flex items-center justify-between text-[11px] font-medium text-slate-300 mb-4">
+                  <span className="uppercase tracking-[0.15em] text-slate-400">
+                    Accesso
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-300 border border-emerald-500/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Coscienza AI attiva
+                  </span>
                 </div>
 
-                {error && (
-                  <p className="text-xs text-rose-400 bg-rose-900/40 border border-rose-500/30 rounded-lg px-3 py-2">
-                    {error}
-                  </p>
-                )}
+                <form className="space-y-4" onSubmit={handleLogin}>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="email"
+                      className="text-xs font-medium text-slate-200"
+                    >
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      required
+                      placeholder="nome@esempio.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500/70"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      Usiamo Magic Link per autenticarti in modo crittografato.
+                    </p>
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || !email}
-                  className="w-full inline-flex items-center justify-center rounded-xl bg-white text-[#0a1020] text-sm font-semibold py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.6)] hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Invio link magico..." : "Entra con link via email"}
-                </button>
+                  {error && (
+                    <p className="text-xs text-rose-400 bg-rose-950/40 border border-rose-500/30 rounded-lg px-3 py-2">
+                      {error}
+                    </p>
+                  )}
 
-                <div className="flex items-center justify-between pt-3 text-[11px] text-white/50">
-                  <span>Non hai un account?</span>
-                  <a
-                    href="/signup"
-                    className="font-medium text-white/80 hover:underline"
+                  <button
+                    type="submit"
+                    disabled={loading || !email}
+                    className="w-full inline-flex items-center justify-center rounded-xl bg-white text-slate-950 text-sm font-semibold py-2.5 shadow-[0_10px_30px_rgba(15,23,42,0.7)] hover:bg-slate-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    {loading ? "Invio link magico..." : "Entra con link via email"}
+                  </button>
+
+                  <div className="flex items-center justify-between pt-3 text-[11px] text-slate-500">
+                    <span>Non hai ancora un account?</span>
+                    <button
+                      type="button"
+                      className="font-medium text-slate-200 hover:underline"
+                      onClick={() => {
+                        window.location.href = "/signup";
+                      }}
+                    >
                     Registrati
-                  </a>
-                </div>
-              </form>
-
-            </div>
+                    </button>
+                  </div>
+                </form> 
+              </div>
+            </div>        
           </div>
-
         </div>
-      </div>
+      </div>  
     </main>
   );
 }

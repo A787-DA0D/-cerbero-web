@@ -1,109 +1,209 @@
 "use client";
 
+import Image from "next/image";
+
 export default function SignupPage() {
   return (
-    <main className="min-h-screen w-full bg-gradient-to-b from-[#050816] via-[#050816] to-[#020617] flex items-center justify-center px-6">
-      <div className="w-full max-w-2xl rounded-3xl bg-black/40 border border-white/10 backdrop-blur-2xl p-8 md:p-10 shadow-[0_35px_120px_rgba(0,0,0,0.75)]">
-        <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight mb-2">
-          Attiva il tuo account Cerbero
-        </h1>
-        <p className="text-sm text-white/60 mb-8">
-          Un unico piano, nessuna confusione:{" "}
-          <span className="font-semibold text-white">Autopilot 80€/mese</span>.  
-          La Coscienza AI gestisce i mercati al posto tuo, tu continui la tua vita.
-        </p>
+    <main className="relative min-h-screen w-full overflow-hidden bg-none text-white">
+      {/* VIDEO DI SFONDO */}
+      <video
+        className="absolute inset-0 h-full w-full object-cover"
+        src="/videos/signup-bg.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
 
-        <form className="grid md:grid-cols-2 gap-8">
-          {/* Colonna sinistra: dati utente base */}
-          <div className="space-y-5">
-            {/* Nome */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white/80">
-                Nome e cognome
-              </label>
-              <input
-                type="text"
-                placeholder="Mario Rossi"
-                className="w-full rounded-2xl bg-black/40 border border-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40"
-              />
-            </div>
-
-            {/* Email */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white/80">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="nome@esempio.com"
-                className="w-full rounded-2xl bg-black/40 border border-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40"
-              />
-              <p className="text-[11px] text-white/45">
-                Usiamo Magic Link per il login: nessuna password da ricordare, solo
-                la tua email.
-              </p>
-            </div>
-          </div>
-
-          {/* Colonna destra: piano + consenso */}
-          <div className="space-y-6">
-            {/* Piano (solo Autopilot) */}
-            <div className="space-y-3">
-              <div className="text-sm font-medium text-white/80">
-                Piano attivo
-              </div>
-              <div className="rounded-2xl bg-black/40 border border-emerald-400/60 px-4 py-4">
-                <div className="text-sm font-semibold flex items-baseline justify-between mb-1">
-                  <span>Autopilot</span>
-                  <span className="text-emerald-300 text-xs font-medium">
-                    80€/mese
-                  </span>
-                </div>
-                <p className="text-white/60 text-xs mb-3">
-                  La Coscienza AI always-on monitora i mercati, esegue operazioni
-                  secondo i parametri definiti e ti lascia il controllo
-                  dell&apos;interruttore ON/OFF.
-                </p>
-                <ul className="text-[11px] text-white/70 space-y-1.5">
-                  <li>• Autotrading completo gestito dalla Coscienza AI</li>
-                  <li>• Monitoraggio continuo 24/7</li>
-                  <li>• Scudi di protezione e gestione del rischio</li>
-                  <li>• Dashboard dedicata con saldo, P&amp;L e operazioni</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Consenso legale (solo UI) */}
-            <div className="space-y-3 text-xs text-white/60">
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-3 w-3 rounded border-white/30 bg-black/40"
+      {/* CONTENUTO */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-5xl mx-auto rounded-[32px] bg-black/70 border border-white/10 px-6 py-8 md:px-10 md:py-10 shadow-[0_40px_160px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+          {/* HEADER: logo + step */}
+          <div className="mb-8 flex items-start justify-between gap-4">
+            {/* Logo + naming */}
+            <div className="flex items-center gap-3">
+              <div className="relative h-11 w-11 flex items-center justify-center">
+                {/* glow circolare */}
+                <div
+                  className="absolute inset-0 rounded-full bg-emerald-400/35 blur-xl opacity-80 animate-pulse"
+                  aria-hidden
                 />
-                <span>
-                  Confermo di aver letto e accettato termini, privacy e rischi del
-                  servizio. Capisco che il trading comporta possibilità di
-                  perdita di capitale.
-                </span>
-              </label>
+                <Image
+                  src="/branding/cerbero-logo.svg"
+                  alt="Cerbero AI logo"
+                  width={44}
+                  height={44}
+                  className="relative z-10 select-none pointer-events-none drop-shadow-[0_0_16px_rgba(16,185,129,0.9)]"
+                />
+              </div>
+              <div className="leading-tight">
+                <div className="text-[13px] font-semibold">
+                  Cerbero <span className="text-emerald-300">AI</span>
+                </div>
+                <div className="text-[11px] text-white/60">
+                  Switch On. Sit back. Relax.
+                </div>
+              </div>
             </div>
 
-            {/* CTA */}
-            <button
-              type="submit"
-              className="w-full rounded-2xl bg-white text-[#0a1020] text-sm font-semibold py-3 hover:opacity-90 transition mt-2"
-            >
-              Crea account e vai al pagamento
-            </button>
-
-            <div className="text-xs text-white/60 text-center md:text-left">
-              Hai già un account?{" "}
-              <a href="/login" className="text-white hover:opacity-80 font-medium">
-                Accedi
-              </a>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">
+              Step 1 / 2 · Crea account
             </div>
           </div>
-        </form>
+
+          {/* GRID: form + card info */}
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+            {/* COLONNA SINISTRA – FORM */}
+            <div>
+              <div className="mb-5">
+                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+                  Crea il tuo account{" "}
+                  <span className="text-emerald-300">Cerbero AI</span>
+                </h1>
+                <p className="mt-3 text-sm md:text-[15px] text-white/80 leading-relaxed max-w-xl">
+                  In questa fase attivi direttamente{" "}
+                  <span className="font-semibold text-emerald-300">
+                    Autopilot 100€/mese
+                  </span>
+                  .
+                  <br />
+                  La Coscienza AI opera sul tuo{" "}
+                  <span className="font-semibold">portafoglio digitale</span>{" "}
+                  secondo i parametri che imposti.
+                  <br />
+                  Il capitale resta sempre{" "}
+                  <span className="font-semibold">sotto il tuo controllo</span>.
+                </p>
+              </div>
+
+              <form className="space-y-4">
+                {/* Nome e cognome */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white/75">
+                    Nome e cognome
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Mario Rossi"
+                    className="w-full rounded-2xl bg-black/40 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/70"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white/75">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="nome@esempio.com"
+                    className="w-full rounded-2xl bg-black/40 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/70"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white/75">
+                    Crea una password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full rounded-2xl bg-black/40 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/70"
+                  />
+                </div>
+
+                {/* Consenso legale */}
+                <div className="space-y-2 pt-1 text-[11px] text-white/60">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-3 w-3 rounded border-white/40 bg-black/60"
+                    />
+                    <span>
+                      Confermo di aver letto e accettato termini, privacy e
+                      rischi del servizio. Capisco che il trading comporta
+                      possibilità di perdita del capitale.
+                    </span>
+                  </label>
+                </div>
+
+                {/* CTA */}
+                <button
+                  type="submit"
+                  className="mt-2 w-full rounded-2xl bg-white text-slate-950 text-sm font-semibold py-3 shadow-[0_18px_60px_rgba(15,23,42,0.95)] hover:bg-slate-100 transition"
+                >
+                  Crea account e continua
+                </button>
+
+                <div className="text-[11px] text-white/60 text-center pt-2">
+                  Hai già un account?{" "}
+                  <a
+                    href="/login"
+                    className="text-white hover:text-emerald-300 transition"
+                  >
+                    Accedi
+                  </a>
+                </div>
+              </form>
+            </div>
+
+            {/* COLONNA DESTRA – CARD AUTOPILOT */}
+            <div className="rounded-[28px] bg-emerald-900/40 border border-emerald-500/40 px-5 py-5 md:px-6 md:py-6 shadow-[0_30px_100px_rgba(16,185,129,0.65)]">
+              {/* Header pannello */}
+              <div className="flex items-center justify-between text-[11px] font-medium text-emerald-200/90 mb-4">
+                <span className="tracking-[0.18em] uppercase">
+                  Autopilot · Cosa è incluso
+                </span>
+                <span className="inline-flex items-center rounded-full border border-emerald-400/60 px-2 py-0.5 text-[10px]">
+                  Autopilot ON
+                </span>
+              </div>
+
+              {/* Contenuto pannello */}
+              <div className="space-y-4 text-sm text-emerald-50">
+                <div>
+                  <p className="font-semibold text-[13px] text-white/90">
+                    Autopilot — 100€/mese
+                  </p>
+                  <p className="mt-1 text-[12px] text-emerald-100/85">
+                    Autotrading AI sul tuo portafoglio digitale dedicato.
+                  </p>
+                </div>
+
+                <ul className="space-y-2">
+                  <li className="flex gap-2">
+                    <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="font-medium text-[13px] text-emerald-50">
+                      Portafoglio digitale intestato a te. Cerbero ha solo il
+                      telecomando operativo, non le chiavi per spostare i fondi.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="font-medium text-[13px] text-emerald-50">
+                      Limiti di rischio e stop dinamici sempre attivi. Puoi
+                      mettere in pausa l’Autopilot in qualsiasi momento dal
+                      Wallet.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="font-medium text-[13px] text-emerald-50">
+                      In futuro potrai cambiare piano o modalità di utilizzo
+                      mantenendo sempre questo stesso portafoglio digitale.
+                    </span>
+                  </li>
+                </ul>
+
+                <p className="mt-4 text-[11px] text-emerald-100/80">
+                  Nessun vincolo annuale, puoi disattivare con un click quando
+                  vuoi.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );

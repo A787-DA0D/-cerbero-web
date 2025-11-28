@@ -1,285 +1,246 @@
 "use client";
 
+import React, { useState } from "react";
 import Image from "next/image";
 
-// Cerbero Web v1 — Pagina Pricing (Autopilot unico)
+export default function PricingPage() {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-const ui = {
-  fonts: {
-    body:
-      "Inter, Plus Jakarta Sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-  },
-};
+  const handleActivateAutopilot = async () => {
+    try {
+      setErrorMsg(null);
+      setLoading(true);
 
-const Shell = ({ children }: { children: React.ReactNode }) => (
-  <div
-    className="min-h-screen w-full bg-gradient-to-b from-[#0a1020] via-[#0e1731] to-black text-white"
-    style={{ fontFamily: ui.fonts.body }}
-  >
-    <div className="absolute inset-0 pointer-events-none" aria-hidden>
-      <div
-        className="absolute -top-32 right-0 w-[40rem] h-[40rem] rounded-full blur-3xl opacity-20"
-        style={{
-          background: "radial-gradient(closest-side, #22d3ee, transparent)",
-        }}
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cerbero_session")
+          : null;
+
+      // Se non sei loggato → vai alla login
+      if (!token) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/login?next=/pricing";
+        }
+        return;
+      }
+
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}), // email arriva dal token JWT
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok || !data.url) {
+        console.error("[pricing] stripe error:", data);
+        setErrorMsg(
+          data.error ||
+            "Impossibile avviare il pagamento. Riprova tra qualche minuto."
+        );
+        return;
+      }
+
+      // Redirect a Stripe Checkout
+      if (typeof window !== "undefined") {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error("[pricing] unexpected error:", err);
+      setErrorMsg(
+        "Si è verificato un errore inatteso. Riprova tra qualche minuto."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="relative min-h-screen w-full overflow-hidden text-white">
+      {/* VIDEO DI SFONDO */}
+      <video
+        className="absolute inset-0 h-full w-full object-cover"
+        src="/videos/pricing-bg.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
       />
-      <div
-        className="absolute -bottom-32 -left-24 w-[40rem] h-[40rem] rounded-full blur-3xl opacity-20"
-        style={{
-          background: "radial-gradient(closest-side, #4f7cff, transparent)",
-        }}
-      />
-    </div>
-    <div className="relative">{children}</div>
-  </div>
-);
 
-const Section = ({ children }: { children: React.ReactNode }) => (
-  <section className="px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-    <div className="mx-auto max-w-6xl">{children}</div>
-  </section>
-);
+      {/* CONTENUTO */}
+      <div className="relative z-10">
+        {/* NAVBAR */}
+        <header className="px-4 sm:px-6 lg:px-12 pt-5 pb-4">
+          <div className="mx-auto max-w-6xl flex items-center justify-between">
+            {/* Logo + naming */}
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 flex items-center justify-center">
+                <Image
+                  src="/branding/cerbero-logo.svg"
+                  alt="Cerbero AI logo"
+                  width={40}
+                  height={40}
+                  className="drop-shadow-[0_0_18px_rgba(56,189,248,0.9)]"
+                />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-sm font-semibold">
+                  Cerbero <span className="text-emerald-300">AI</span>
+                </span>
+                <span className="text-[11px] text-white/60">
+                  Switch On. Sit back. Relax.
+                </span>
+              </div>
+            </div>
 
-// Navbar (stile simile alla landing, con "Pricing" evidenziato)
-const Nav = () => (
-  <header className="sticky top-0 z-30 backdrop-blur-xl px-4 sm:px-6 lg:px-8 py-4">
-    <div className="mx-auto max-w-7xl flex items-center justify-between">
-      <div className="flex items-center gap-1">
-        <Image
-          src="/cerbero-logo.png"
-          alt="Cerbero logo"
-          width={150}
-          height={150}
-          className="object-contain invert brightness-0"
-        />
-        <div className="text-xl md:text-2xl font-semibold tracking-tight">
-          Cerbero <span className="text-white/60">AI</span>
-        </div>
-      </div>
-
-      <nav className="hidden md:flex items-center gap-6 text-sm text-white/80">
-        <a href="/" className="hover:text-white transition">
-          Home
-        </a>
-        <span className="text-white font-semibold">Pricing</span>
-        <a href="/trust" className="hover:text-white transition">
-          Come funziona
-        </a>
-        <a href="/login" className="hover:text-white transition">
-          Login
-        </a>
-      </nav>
-
-      <div className="flex items-center gap-3">
-        <a
-          href="/signup?plan=autopilot"
-          className="hidden sm:inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium bg-white text-[#0a1020] hover:opacity-90 transition"
-        >
-          Attiva Autopilot
-        </a>
-      </div>
-    </div>
-  </header>
-);
-
-const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-white/80">
-    {children}
-  </span>
-);
-
-const PlanCard = ({
-  title,
-  price,
-  description,
-  features,
-  highlight,
-  ctaLabel,
-  ctaHref,
-}: {
-  title: string;
-  price: string;
-  description: string;
-  features: string[];
-  highlight?: boolean;
-  ctaLabel: string;
-  ctaHref: string;
-}) => (
-  <div
-    className={`relative rounded-3xl p-6 md:p-8 bg-white/10 backdrop-blur-xl border ${
-      highlight
-        ? "border-white shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
-        : "border-white/15 shadow-[0_12px_35px_rgba(0,0,0,0.35)]"
-    }`}
-  >
-    {highlight && (
-      <div className="absolute -top-3 right-6 rounded-full bg-emerald-400 text-[#0a1020] text-xs font-semibold px-3 py-1 shadow-lg">
-        Piano unico
-      </div>
-    )}
-
-    <div className="mb-4 flex items-baseline gap-2">
-      <h3 className="text-xl md:text-2xl font-semibold">{title}</h3>
-    </div>
-
-    <div className="mb-4">
-      <span className="text-3xl md:text-4xl font-semibold">{price}</span>
-      <span className="text-sm text-white/60"> /mese</span>
-    </div>
-
-    <p className="text-sm text-white/80 mb-6">{description}</p>
-
-    <ul className="space-y-2 text-sm text-white/80 mb-8">
-      {features.map((f, i) => (
-        <li key={i} className="flex items-start gap-2">
-          <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span>{f}</span>
-        </li>
-      ))}
-    </ul>
-
-    <a
-      href={ctaHref}
-      className={`inline-flex justify-center w-full rounded-2xl px-4 py-3 text-sm font-medium transition ${
-        highlight
-          ? "bg-white text-[#0a1020] hover:opacity-90"
-          : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
-      }`}
-    >
-      {ctaLabel}
-    </a>
-  </div>
-);
-
-const Footer = () => (
-  <footer className="px-4 sm:px-6 lg:px-8 py-10 border-t border-white/10 bg-gradient-to-b from-transparent to-white/5">
-    <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
-      <div>
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-2xl grid place-items-center bg-white/10 border border-white/15">
-            <span className="text-xl font-bold">C</span>
-          </div>
-          <div className="text-sm font-semibold">Cerbero AI</div>
-        </div>
-        <p className="mt-3 text-xs text-white/60">
-          © {new Date().getFullYear()} Cerbero. All rights reserved.
-        </p>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
-        <div>
-          <div className="text-white/70 mb-2">Prodotto</div>
-          <ul className="space-y-1">
-            <li>
-              <a className="hover:underline text-white/80" href="/">
+            <nav className="hidden md:flex items-center gap-8 text-sm md:text-base font-semibold">
+              <a
+                href="/"
+                className="text-white/80 hover:text-white transition"
+              >
                 Home
               </a>
-            </li>
-            <li>
-              <a className="hover:underline text-white/80" href="/trust">
+              <span className="text-white">Pricing</span>
+              <a
+                href="/trust"
+                className="text-white/80 hover:text-white transition"
+              >
                 Come funziona
               </a>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <div className="text-white/70 mb-2">Account</div>
-          <ul className="space-y-1">
-            <li>
-              <a className="hover:underline text-white/80" href="/login">
+              <a
+                href="/login"
+                className="text-white/80 hover:text-white transition"
+              >
                 Login
               </a>
-            </li>
-            <li>
-              <a className="hover:underline text-white/80" href="/signup">
-                Registrati
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <div className="text-white/70 mb-2">Legal</div>
-          <ul className="space-y-1">
-            <li>
-              <a className="hover:underline text-white/80" href="#">
-                Privacy
-              </a>
-            </li>
-            <li>
-              <a className="hover:underline text-white/80" href="#">
-                Disclaimer
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </footer>
-);
+            </nav>
 
-// Pagina principale /pricing
-export default function PricingPage() {
-  return (
-    <Shell>
-      <Nav />
-
-      <Section>
-        <div className="text-center mb-10">
-          <div className="mb-3 inline-flex items-center gap-2 justify-center">
-            <Badge>Un solo piano. Nessuna confusione.</Badge>
+            <a
+              href="/login"
+              className="inline-flex items-center rounded-full bg-white text-slate-900 text-xs md:text-sm font-semibold px-5 py-2.5 shadow-[0_0_20px_rgba(255,255,255,0.5)] hover:shadow-[0_0_32px_rgba(45,212,191,0.9)] transition"
+            >
+              Accedi
+            </a>
           </div>
-          <h1 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">
-            Autopilot 80€/mese. Tutto incluso.
-          </h1>
-          <p className="text-white/70 max-w-2xl mx-auto text-sm md:text-base">
-            Accendi la Coscienza AI, lei lavora 24/7 sui mercati. Tu continui la
-            tua vita. Nessun vincolo annuale, puoi spegnere l&apos;Autopilot
-            quando vuoi.
-          </p>
-        </div>
+        </header>
 
-        <div className="max-w-xl mx-auto mb-10">
-          <PlanCard
-            title="Autopilot"
-            price="80€"
-            description="Per chi vuole accendere Cerbero e lasciare che la Coscienza AI gestisca i mercati in autonomia."
-            features={[
-              "Autotrading completo gestito dalla Coscienza AI",
-              "Monitoraggio continuo dei mercati 24/7",
-              "Scudi di protezione e controllo del rischio",
-              "Interruttore AUTOTRADING ON/OFF sempre sotto il tuo controllo",
-              "Dashboard dedicata con saldo, P&L e operazioni recenti",
-            ]}
-            highlight
-            ctaLabel="Attiva Autopilot"
-            ctaHref="/signup?plan=autopilot"
-          />
-        </div>
+        {/* HERO + TITOLO */}
+        <section className="px-4 sm:px-6 lg:px-12 pb-16 pt-4">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="inline-flex items-center rounded-full bg-black/60 border border-white/10 px-4 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-white/70">
+              • Un solo pilota. Autopilot.
+            </div>
+            <h1 className="mt-6 text-3xl md:text-4xl font-semibold tracking-tight">
+              Pricing semplice. Solo Autotrading.
+            </h1>
 
-        <div className="rounded-3xl bg-white/5 border border-white/15 px-6 py-5 md:px-8 md:py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="text-sm text-emerald-300 font-semibold mb-1">
-              Architettura Cerbero
-            </div>
-            <div className="text-base md:text-lg font-semibold">
-              Ponte 1-a-1: i tuoi soldi, il tuo contratto.
-            </div>
-            <p className="text-xs md:text-sm text-white/70 mt-2 max-w-xl">
-              I fondi passano dalla banca alla tua cassaforte personale su
-              blockchain (smart contract dedicato). Noi abbiamo il telecomando
-              operativo, ma non le chiavi per spostare il capitale fuori dal tuo
-              contratto.
+            <p className="mt-3 text-sm md:text-base max-w-3xl mx-auto text-white/90 font-semibold">
+              Cerbero v1 nasce con un solo pilota dedicato: la Coscienza AI che
+              automatizza l’operatività sul tuo portafoglio digitale dedicato,
+              con focus su semplicità, controllo del rischio e zero vincoli
+              annuali.
             </p>
           </div>
-          <a
-            href="/trust"
-            className="inline-flex rounded-2xl px-4 py-2 text-xs md:text-sm font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition"
-          >
-            Scopri come funziona
-          </a>
-        </div>
-      </Section>
 
-      <Footer />
-    </Shell>
+          {/* CARD PRICING CENTRALE */}
+          <div className="mt-10 mx-auto max-w-4xl">
+            <div className="rounded-[32px] bg-black/70 border border-emerald-500/25 shadow-[0_40px_160px_rgba(0,0,0,0.95)] backdrop-blur-2xl px-6 py-6 sm:px-8 sm:py-8 space-y-6">
+              {/* Badge piano */}
+              <div className="inline-flex items-center rounded-full bg-cyan-500/10 border border-cyan-400/60 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-cyan-200">
+                Autopilot · Piano unico
+              </div>
+
+              <div className="grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)] gap-8 items-start">
+                {/* Colonna sinistra: prezzo */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-4xl md:text-5xl font-semibold">
+                      99€{" "}
+                      <span className="text-sm font-normal text-white/70">
+                        /mese
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-white/60">
+                      Nessun vincolo annuale. Puoi disattivare con un click
+                      quando vuoi.
+                    </div>
+                  </div>
+
+                  <ul className="space-y-2 text-sm text-white/85">
+                    <li className="flex gap-2">
+                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-amber-300" />
+                      <span>
+                        Autotrading AI sul tuo portafoglio digitale dedicato.
+                      </span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-amber-300" />
+                      <span>
+                        Portafoglio digitale intestato a te: Cerbero ha solo il
+                        telecomando operativo, non le chiavi per spostare i
+                        fondi.
+                      </span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-amber-300" />
+                      <span>
+                        Limiti di rischio e stop dinamici sempre attivi. Puoi
+                        mettere in pausa l’Autopilot in qualsiasi momento dal
+                        Wallet.
+                      </span>
+                    </li>
+                  </ul>
+
+                  <button
+                    onClick={handleActivateAutopilot}
+                    disabled={loading}
+                    className="mt-4 inline-flex items-center justify-center rounded-full bg-white text-slate-900 px-6 py-3 text-sm font-semibold shadow-[0_0_22px_rgba(52,211,153,0.7)] hover:shadow-[0_0_36px_rgba(52,211,153,1)] transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loading
+                      ? "Reindirizzamento a Stripe..."
+                      : "Attiva Autopilot 99€/mese"}
+                  </button>
+
+                  {errorMsg && (
+                    <p className="mt-2 text-xs text-red-400 max-w-xs">
+                      {errorMsg}
+                    </p>
+                  )}
+                </div>
+
+                {/* Colonna destra: frase chiave spostata dal sottotitolo */}
+                <div className="space-y-3 text-sm text-white/85">
+                  <p>
+                    In questa fase esiste un solo piano:{" "}
+                    <span className="text-emerald-300 font-semibold">
+                      Autopilot 99€/mese
+                    </span>
+                    . La Coscienza AI opera sul tuo{" "}
+                    <span className="text-emerald-300 font-semibold">
+                      portafoglio digitale
+                    </span>{" "}
+                    secondo i parametri che imposti. Il capitale resta sempre{" "}
+                    <span className="text-emerald-300 font-semibold">
+                      sotto il tuo controllo
+                    </span>
+                    .
+                  </p>
+                  <a
+                    href="/trust"
+                    className="inline-flex text-emerald-300 text-xs md:text-sm hover:text-emerald-200 underline-offset-4 hover:underline"
+                  >
+                    Scopri di più su sicurezza &amp; trust →
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

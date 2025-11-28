@@ -73,7 +73,7 @@ const pillars = [
 
 export default function TrustPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#050816] via-[#050816] to-[#f5f5f5] text-white">
+    <main className="min-h-screen bg-cerbero-trust text-white">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-20 md:py-24">
 
         {/* HERO */}

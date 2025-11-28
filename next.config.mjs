@@ -1,15 +1,38 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ❌ Redirect disattivato per vedere la landing vera
-  // async redirects() {
-  //   return [
-  //     {
-  //       source: '/',
-  //       destination: '/coming-soon',
-  //       permanent: false,
-  //     },
-  //   ];
-  // },
+  reactStrictMode: true,
+  poweredByHeader: false,
+
+  async headers() {
+    return [
+      {
+        // Applica gli header a tutte le route
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "0",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

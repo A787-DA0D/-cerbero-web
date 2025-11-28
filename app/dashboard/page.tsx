@@ -28,7 +28,7 @@ function getGlowColor(pnl: number) {
 // Orb 3D: C del logo sempre frontale + leggero movimento
 // ———————————————————————————————————————
 function CerberoOrb3D() {
-  const texture = useLoader(TextureLoader, "/cerbero-logo-clean.png");
+  const texture = useLoader(TextureLoader, "/3d/cerbero-logo-3d.png");
   const meshRef = useRef<any>(null);
   const glowColor = getGlowColor(PNL_MONTHLY);
 
@@ -131,17 +131,17 @@ export default function DashboardPage() {
 
   const glowColor = getGlowColor(PNL_MONTHLY);
 
-  return (
-    <main className="min-h-screen w-full bg-gradient-to-br from-[#050816] via-[#071329] to-[#020617] text-white flex">
+ return (
+   <main className="min-h-screen w-full bg-gradient-to-b from-[#050816] via-[#050816] to-[#e2e8f0] text-white flex">
       {/* Sidebar */}
       <aside className="hidden md:flex w-60 flex-col border-r border-white/10 bg-black/40 backdrop-blur-2xl">
         <div className="h-20 px-6 flex items-center gap-3 border-b border-white/10">
           <div className="h-9 w-9 rounded-full bg-white/5 flex items-center justify-center overflow-hidden">
             <Image
-              src="/cerbero-logo-clean.png"
+              src="/branding/cerbero-logo.svg"
               alt="Cerbero logo"
-              width={32}
-              height={32}
+              width={28}
+              height={28}
               className="object-contain"
             />
           </div>
@@ -151,9 +151,12 @@ export default function DashboardPage() {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 text-sm text-white/70">
-          <button className="w-full flex items-center justify-between rounded-2xl px-3 py-2 bg-white/10 text-white font-semibold">
-            <span>Dashboard</span>
-          </button>
+          <a
+            href="/account"
+            className="w-full flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-white/5 font-semibold"
+          >
+            <span>Account</span>
+          </a>
           <a
             href="/wallet"
             className="w-full flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-white/5 font-semibold"
@@ -336,7 +339,7 @@ export default function DashboardPage() {
           >
             {/* Saldo totale */}
             <motion.div
-              className="rounded-3xl bg-white/5 border border-white/10 p-5"
+              className="rounded-3xl bg-white/8 border border-white/15 p-5 backdrop-blur-xl"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.5 }}
@@ -352,7 +355,7 @@ export default function DashboardPage() {
 
             {/* P&L mese */}
             <motion.div
-              className="rounded-3xl bg-white/5 border border-white/10 p-5"
+              className="rounded-3xl bg-white/8 border border-white/15 p-5 backdrop-blur-xl"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
@@ -373,7 +376,7 @@ export default function DashboardPage() {
 
             {/* Stato pilota */}
             <motion.div
-              className="rounded-3xl bg-white/5 border border-white/10 p-5 flex flex-col justify-between"
+              className="rounded-3xl bg-white/8 border border-white/15 p-5 backdrop-blur-xl flex-col justify-between"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, duration: 0.5 }}
@@ -415,7 +418,7 @@ export default function DashboardPage() {
 
         {/* Operazioni recenti (mock) */}
         <motion.section
-          className="rounded-3xl bg-white/5 border border-white/10 p-5"
+          className="rounded-3xl bg-white/8 border border-white/15 p-5 backdrop-blur-xl"
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
