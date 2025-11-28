@@ -9,12 +9,7 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string | unde
 // Forziamo runtime Node (niente Edge) per avere il body raw
 export const runtime = "nodejs";
 
-const stripe =
-  STRIPE_SECRET_KEY
-    ? new Stripe(STRIPE_SECRET_KEY, {
-        apiVersion: "2024-06-20",
-      })
-    : null;
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 export async function POST(req: NextRequest) {
   if (!stripe || !STRIPE_WEBHOOK_SECRET) {
