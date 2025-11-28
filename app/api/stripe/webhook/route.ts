@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   // 1) Recuperiamo il RAW body + firma Stripe
   const body = await req.text();
-  const headerList = headers();
+  const headerList = await headers();
   const sig = headerList.get("stripe-signature");
 
   if (!sig) {
