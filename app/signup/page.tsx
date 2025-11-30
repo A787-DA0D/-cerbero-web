@@ -17,7 +17,7 @@ export default function SignupPage() {
 
       {/* CONTENUTO */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-5xl mx-auto rounded-[32px] bg-black/70 border border-white/10 px-6 py-8 md:px-10 md:py-10 shadow-[0_40px_160px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+        <div className="w-full max-w-5xl mx-auto rounded-[32px] bg-black/30 border border-white/15 px-6 py-8 md:px-10 md:py-10 shadow-[0_40px_160px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
           {/* HEADER: logo + step */}
           <div className="mb-8 flex items-start justify-between gap-4">
             {/* Logo + naming */}
@@ -149,7 +149,7 @@ export default function SignupPage() {
             </div>
 
             {/* COLONNA DESTRA – CARD AUTOPILOT */}
-            <div className="rounded-[28px] bg-emerald-900/40 border border-emerald-500/40 px-5 py-5 md:px-6 md:py-6 shadow-[0_30px_100px_rgba(16,185,129,0.65)]">
+            <div className="rounded-[28px] bg-emerald-900/25 border border-emerald-400/60 px-5 py-5 md:px-6 md:py-6 shadow-[0_30px_80px_rgba(16,185,129,0.55)] backdrop-blur-2xl">
               {/* Header pannello */}
               <div className="flex items-center justify-between text-[11px] font-medium text-emerald-200/90 mb-4">
                 <span className="tracking-[0.18em] uppercase">
@@ -164,7 +164,7 @@ export default function SignupPage() {
               <div className="space-y-4 text-sm text-emerald-50">
                 <div>
                   <p className="font-semibold text-[13px] text-white/90">
-                    Autopilot — 100€/mese
+                    Autopilot — 99€/mese
                   </p>
                   <p className="mt-1 text-[12px] text-emerald-100/85">
                     Autotrading AI sul tuo portafoglio digitale dedicato.
@@ -185,13 +185,6 @@ export default function SignupPage() {
                       Limiti di rischio e stop dinamici sempre attivi. Puoi
                       mettere in pausa l’Autopilot in qualsiasi momento dal
                       Wallet.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span className="font-medium text-[13px] text-emerald-50">
-                      In futuro potrai cambiare piano o modalità di utilizzo
-                      mantenendo sempre questo stesso portafoglio digitale.
                     </span>
                   </li>
                 </ul>
