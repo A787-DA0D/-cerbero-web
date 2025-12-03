@@ -188,7 +188,6 @@ export default function WalletPage() {
     return buildTransakUrl({
       email: userEmail,
       walletAddress: userWallet,
-      isBuyOrSell: transakMode,
     });
   }, [userEmail, userWallet, transakMode]);
 
