@@ -15,11 +15,43 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Cerbero AI — Switch On. Sit Back. Relax.",
-    template: "%s — Cerbero AI",
+    default: 'Cerbero AI – AI + DeFi Autotrading Ecosystem',
+    template: '%s | Cerbero AI',
   },
-  description:
-    "Cerbero AI è una piattaforma di Wealth Management su blockchain: attivi l’Autopilot e la Coscienza AI gestisce i mercati al posto tuo.",
+  description: 'Cerbero AI – AI + DeFi autotrading ecosystem.',
+  metadataBase: new URL('https://cerberoai.com'),
+  themeColor: '#000000',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.ico',
+  },
+  openGraph: {
+    title: 'Cerbero AI – AI + DeFi Autotrading Ecosystem',
+    description: 'Cerbero AI – AI + DeFi autotrading ecosystem.',
+    url: 'https://cerberoai.com',
+    siteName: 'Cerbero AI',
+    type: 'website',
+    images: [
+      {
+        url: '/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: 'Cerbero AI Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cerbero AI – AI + DeFi Autotrading Ecosystem',
+    description: 'Cerbero AI – AI + DeFi autotrading ecosystem.',
+    images: ['/icon-512.png'],
+  },
 };
 
 export default function RootLayout({

@@ -1,434 +1,834 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Image from "next/image";
-import { motion, type Variants } from "framer-motion";
-import FooterLegal from "@/components/FooterLegal";
+import Link from 'next/link';
+import Image from 'next/image';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
-// Cerbero Web v1 — Landing futurizzata (Autopilot only)
+// NAV
+const navItems = [
+  { id: 'vision', label: 'Visione' },
+  { id: 'trust', label: 'Come funziona' },
+  { id: 'pricing', label: 'Pricing' },
+];
 
-// —————————————————————————————————————————————————————————
-// UI KIT (tokens)
-// —————————————————————————————————————————————————————————
-const ui = {
-  palette: {
-    ink: "#0a1020",
-    kaya: "#0f1b3d",
-    glass: "rgba(255,255,255,0.1)",
-    paper: "#ffffff",
-    mist: "#f5f7fb",
-    accent: "#4f7cff",
-    accent2: "#22d3ee",
-    success: "#16a34a",
-    warning: "#f59e0b",
-    danger: "#ef4444",
-    muted: "#8a93a6",
-  },
-  fonts: {
-    heading:
-      "Inter, Plus Jakarta Sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-    body: "Inter, Plus Jakarta Sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-  },
-  radius: {
-    xl: "1.25rem",
-    lg: "1rem",
-    md: "0.75rem",
-    sm: "0.5rem",
-  },
-  shadow: {
-    soft: "0 10px 30px rgba(10,16,32,0.18)",
-    glass:
-      "inset 0 0 0 1px rgba(255,255,255,0.18), 0 8px 30px rgba(10,16,32,0.25)",
-  },
-  spacing: {
-    sectionY: "py-16 md:py-24",
-    gutterX: "px-4 sm:px-6 lg:px-8",
-  },
-};
+function scrollToSection(id: string) {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
-// motion
-const fadeUp: Variants = {
+// Variants base
+const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-  },
+  visible: { opacity: 1, y: 0 },
 };
 
-const fadeIn: Variants = {
+const fadeIn = {
   hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+};
+
+// Contenitori con stagger per micro-animazioni
+const sectionContainer = {
+  hidden: {},
   visible: {
-    opacity: 1,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
   },
 };
 
-// —————————————————————————————————————————————————————————
-// SHELL con video
-// —————————————————————————————————————————————————————————
-const Shell = ({ children }: { children: React.ReactNode }) => (
-  <div
-    className="relative min-h-screen w-full overflow-hidden text-white"
-    style={{ fontFamily: ui.fonts.body }}
-  >
-    <video
-      className="absolute inset-0 h-full w-full object-cover"
-      src="/videos/landing-bg.mp4"
-      autoPlay
-      loop
-      muted
-      playsInline
-    />
-    <div className="relative z-10 min-h-screen">{children}</div>
-  </div>
-);
+// Dataset per widget LIVE OPERATIONS
+const liveFeedData = [
+  { type: 'PROFIT', symbol: 'EUR/USD', action: 'CLOSE LONG', value: '+0.85%', time: 'Just now', icon: '🟢' },
+  { type: 'AI_LOG', symbol: 'SYSTEM', action: 'SCANNING', value: 'Volatility Analysis: LOW', time: '10 sec ago', icon: '🔵' },
+  { type: 'ENTRY', symbol: 'XAU/USD', action: 'OPEN LONG', value: '@ 2048.50', time: '2 min ago', icon: '⚡' },
+  { type: 'PROFIT', symbol: 'BTC/USD', action: 'TP HIT', value: '+2.1%', time: '5 min ago', icon: '🟢' },
+  { type: 'RISK', symbol: 'GUARD', action: 'PROTECTION', value: 'Stop Loss Trailing Active', time: '8 min ago', icon: '🛡️' },
+  { type: 'ENTRY', symbol: 'NAS100', action: 'OPEN SHORT', value: 'Pattern A+ Detected', time: '12 min ago', icon: '⚡' },
+  { type: 'AI_LOG', symbol: 'GNS', action: 'SYNC', value: 'Wallet Connection Stable', time: '15 min ago', icon: '🔵' },
+  { type: 'PROFIT', symbol: 'GBP/JPY', action: 'CLOSE SHORT', value: '+0.6%', time: '22 min ago', icon: '🟢' },
+  { type: 'ENTRY', symbol: 'ETH/USD', action: 'SCALPING', value: 'Liquidity Grab Detected', time: '28 min ago', icon: '⚡' },
+  { type: 'PROFIT', symbol: 'USOIL', action: 'TP HIT', value: '+1.4%', time: '35 min ago', icon: '🟢' },
+];
 
-// —————————————————————————————————————————————————————————
-// NAVBAR + MOBILE MENU
-// —————————————————————————————————————————————————————————
-const Nav = () => {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+export default function HomePage() {
+  const { scrollYProgress } = useScroll();
+
+  // Glow dinamici
+  const glowScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
+  const glowOpacity = useTransform(scrollYProgress, [0.6, 1], [0.6, 1]);
 
   return (
-    <motion.header
-      className={`sticky top-0 z-30 ${ui.spacing.gutterX} pt-4 pb-3`}
-      variants={fadeIn}
-      initial="hidden"
-      animate="visible"
-      custom={0}
-    >
-      <div className="mx-auto max-w-7xl rounded-3xl border border-white/15 bg-black/60 backdrop-blur-2xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4 shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
-        {/* Logo */}
-        <a href="/" className="flex items-center gap-2 hover:opacity-90 transition">
-          <Image
-            src="/branding/cerbero-logo.svg"
-            alt="Cerbero logo"
-            width={40}
-            height={40}
-            className="drop-shadow-[0_0_18px_rgba(56,189,248,0.9)]"
-          />
-          <div className="flex flex-col leading-tight">
-            <span className="text-base md:text-lg font-semibold tracking-tight">
-              Cerbero <span className="text-sky-300">AI</span>
-            </span>
-            <span className="text-[10px] md:text-[11px] text-white/50">
-              Switch On. Sit back and Relax.
-            </span>
-          </div>
-        </a>
+    <div className="relative min-h-screen overflow-x-hidden scroll-smooth bg-black text-white">
+      {/* Background globale */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-black" />
 
-        {/* NAV DESKTOP */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold">
-          <a href="/" className="text-white hover:text-sky-300 transition">Home</a>
-          <a href="/pricing" className="text-white/80 hover:text-sky-300 transition">Pricing</a>
-          <a href="/trust" className="text-white/80 hover:text-sky-300 transition">Come funziona</a>
-        </nav>
-
-        {/* DESKTOP CTA */}
-        <div className="hidden md:flex items-center gap-2">
-          <a href="/signup" className="rounded-full border border-white/30 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 transition">
-            Registrati
-          </a>
-          <a href="/login" className="rounded-full bg-white text-slate-950 px-4 py-2 text-sm font-semibold hover:bg-slate-100 transition">
-            Accedi
-          </a>
-        </div>
-
-        {/* MOBILE TRIGGER */}
-        <button
-          type="button"
-          className="md:hidden inline-flex flex-col items-center justify-center rounded-full border border-white/30 bg-black/60 p-2 active:scale-95 transition"
-          onClick={() => setIsMobileOpen((v) => !v)}
-        >
-          <span className="h-1 w-1 rounded-full bg-white mb-0.5" />
-          <span className="h-1 w-1 rounded-full bg-white mb-0.5" />
-          <span className="h-1 w-1 rounded-full bg-white" />
-        </button>
+        {/* Glow principali dinamici */}
+        <motion.div
+          style={{ scale: glowScale, opacity: glowOpacity }}
+          className="absolute -top-40 -left-40 h-[420px] w-[420px] rounded-full bg-fuchsia-600/40 blur-3xl"
+        />
+        <motion.div
+          style={{ scale: glowScale, opacity: glowOpacity }}
+          className="absolute top-1/3 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/25 blur-3xl"
+        />
+        <motion.div
+          style={{ scale: glowScale, opacity: glowOpacity }}
+          className="absolute bottom-[-160px] left-1/3 h-[480px] w-[480px] rounded-full bg-violet-500/30 blur-3xl"
+        />
       </div>
 
-      {/* MENU MOBILE */}
-      {isMobileOpen && (
-        <motion.nav
-          className="md:hidden mt-3 mx-auto max-w-7xl rounded-3xl border border-white/15 bg-black/85 backdrop-blur-2xl px-4 py-4 space-y-3 text-sm text-white/90 shadow-[0_18px_60px_rgba(0,0,0,0.75)]"
-          variants={fadeIn}
-          initial="hidden"
-          animate="visible"
-        >
-          <a href="/" onClick={() => setIsMobileOpen(false)} className="block px-2 py-2 rounded-xl hover:bg-white/10 font-semibold">Home</a>
-          <a href="/pricing" onClick={() => setIsMobileOpen(false)} className="block px-2 py-2 rounded-xl hover:bg-white/10 font-semibold">Pricing</a>
-          <a href="/come-funziona" onClick={() => setIsMobileOpen(false)} className="block px-2 py-2 rounded-xl hover:bg-white/10 font-semibold">Come funziona</a>
+      {/* Overlay per scurire un po' il fondo */}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/0 to-black/85" />
 
-          <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
-            <a href="/signup" className="w-full rounded-full border border-white/30 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 transition">Registrati</a>
-            <a href="/login" className="w-full rounded-full bg-white text-slate-950 px-4 py-2 text-sm font-semibold hover:bg-slate-100 transition">Accedi</a>
+      {/* HEADER STICKY GLASS */}
+      <header className="sticky top-0 z-40 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 lg:px-6 lg:py-4">
+          {/* Logo / Brand */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center">
+              <Image
+                src="/branding/cerbero-logo.svg"
+                alt="Cerbero AI logo"
+                width={40}
+                height={40}
+                className="object-contain drop-shadow-[0_0_22px_rgba(56,189,248,0.95)]"
+              />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-semibold">
+                Cerbero{' '}
+                <span className="bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
+                  AI
+                </span>
+              </span>
+              <span className="text-[11px] text-white/60">
+                Coscienza Finanziaria Autonoma
+              </span>
+            </div>
           </div>
-        </motion.nav>
-      )}
-    </motion.header>
+
+          {/* Nav desktop */}
+          <nav className="hidden items-center gap-8 text-sm text-white/70 md:flex">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className="transition-colors hover:text-white"
+              >
+                {item.label}
+              </button>
+            ))}
+
+            <Link
+              href="/login"
+              className="rounded-full px-4 py-1.5 text-sm font-medium text-white/80 transition hover:text-white"
+            >
+              Accedi
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg shadow-fuchsia-500/40 transition hover:brightness-110"
+              style={{
+                backgroundImage:
+                  'linear-gradient(135deg, #ec38ff, #9b6cff, #00eaff)',
+              }}
+            >
+              Avvia Pilota
+            </Link>
+          </nav>
+
+          {/* Nav mobile essenziale */}
+          <div className="flex items-center gap-3 md:hidden">
+            <Link
+              href="/login"
+              className="rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-white/80"
+            >
+              Accedi
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-full px-3 py-1.5 text-xs font-semibold shadow-lg shadow-fuchsia-500/40"
+              style={{
+                backgroundImage:
+                  'linear-gradient(135deg, #ec38ff, #9b6cff, #00eaff)',
+              }}
+            >
+              Avvia Pilota
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* CONTENUTO */}
+      <main className="relative z-10 mx-auto flex max-w-6xl flex-col gap-32 px-4 pb-20 pt-10 lg:px-6 lg:pt-16 lg:pb-24">
+        {/* HERO */}
+        <HeroSection />
+
+        {/* Separator + ORB COSCIENZA */}
+        <NeuralSeparator label="La Coscienza" />
+        <CoscienzaOrbSection />
+
+        {/* VISION */}
+        <VisionSection />
+
+        {/* Separator */}
+        <NeuralSeparator label="Come funziona" />
+
+        {/* TRUST + LIVE OPERATIONS + FLOW */}
+        <TrustSection />
+
+        {/* Separator */}
+        <NeuralSeparator label="Accesso & Pricing" />
+
+        {/* PRICING */}
+        <PricingSection />
+
+        {/* FOOTER */}
+        <SiteFooter />
+      </main>
+    </div>
   );
+}
+
+/* ----------------------------- HERO SECTION ----------------------------- */
+
+function HeroSection() {
+  return (
+    <motion.section
+      id="hero"
+      variants={sectionContainer}
+      initial="hidden"
+      animate="visible"
+      className="grid gap-10 lg:grid-cols-[1.1fr_minmax(0,0.9fr)] lg:items-center"
+    >
+      {/* Copy */}
+      <div className="space-y-8">
+        <motion.div
+          variants={fadeInUp}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="space-y-4"
+        >
+          <div className="flex flex-col gap-2">
+            <p className="inline-flex items-center gap-2 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-fuchsia-200/90">
+              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_12px_rgba(244,114,182,1)]" />
+              Autotrading Istituzionale • Arbitrum
+            </p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">
+              Data driven since 2020
+            </p>
+          </div>
+
+          <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">
+            <span className="block">
+              SVEGLIA I TUOI SOLDI.
+            </span>
+            <span className="mt-1 block bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
+              L&apos;EVOLUZIONE DEL TRADING È QUI.
+            </span>
+          </h1>
+
+          <p className="max-w-xl text-sm text-white/70 sm:text-base">
+            Dimentica le banche che ti danno zero. Cerbero è il primo sistema di{' '}
+            <span className="bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text font-semibold text-transparent">
+              Autotrading Istituzionale
+            </span>{' '}
+            accessibile a tutti.
+            Collega il tuo conto, attiva l&apos;interruttore e lascia che la Coscienza generi profitti per te.
+            Senza sforzo. Senza intermediari.
+          </p>
+        </motion.div>
+
+        <motion.div
+          variants={fadeInUp}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.05 }}
+          className="flex flex-wrap items-center gap-4"
+        >
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_0_35px_rgba(236,72,153,0.65)] transition hover:brightness-110"
+              style={{
+                backgroundImage:
+                  'linear-gradient(135deg, #ec38ff, #9b6cff, #00eaff)',
+              }}
+            >
+              Avvia il Pilota
+            </Link>
+          </motion.div>
+
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => scrollToSection('trust')}
+            className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/80 transition hover:border-white/40 hover:bg-white/10"
+          >
+            Guarda come funziona
+          </motion.button>
+        </motion.div>
+
+        <motion.div
+          variants={fadeIn}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.12 }}
+          className="flex flex-wrap gap-6 text-[11px] text-white/50"
+        >
+          <div className="space-y-1 max-w-xs">
+            <p className="font-semibold text-white/70">Tua Proprietà</p>
+            <p>I fondi restano sempre nel tuo wallet personale. Nessun conto omnibus, nessuna banca in mezzo.</p>
+          </div>
+          <div className="space-y-1 max-w-xs">
+            <p className="font-semibold text-white/70">Prelievo istantaneo</p>
+            <p>Preleva i profitti quando vuoi, in un click. Tu decidi quando spegnere Cerbero.</p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Video Hero responsive */}
+      <motion.div
+        variants={fadeIn}
+        transition={{ duration: 0.7, ease: 'easeOut', delay: 0.1 }}
+        className="relative"
+      >
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_70px_rgba(59,130,246,0.55)]">
+          {/* Video Desktop 16:9 */}
+          <video
+            className="hidden h-full w-full md:block"
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
+            <source src="/videos/hero-16-9.mp4" type="video/mp4" />
+          </video>
+
+          {/* Video Mobile 9:16 */}
+          <video
+            className="block h-full w-full md:hidden"
+            autoPlay
+            loop
+            muted
+            playsInline
+          >
+            <source src="/videos/hero-9-16.mp4" type="video/mp4" />
+          </video>
+
+          {/* Overlay leggero */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+
+          {/* Mini badge sovrapposto */}
+          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-white/70 backdrop-blur-md">
+            <span className="inline-block h-1 w-8 rounded-full bg-gradient-to-r from-fuchsia-400 via-violet-300 to-sky-300" />
+            Live Markets Feed
+          </div>
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+}
+
+/* ------------------ ORB COSCIENZA + NEURAL SEPARATOR ------------------- */
+
+type NeuralSeparatorProps = {
+  label?: string;
 };
 
-// CARD
-const Card = ({ children, delay = 0 }: any) => (
-  <motion.div
-    className="rounded-3xl p-6 bg-black/70 backdrop-blur-xl border border-white/15"
-    style={{ boxShadow: ui.shadow.glass }}
-    variants={fadeUp}
-    initial="hidden"
-    whileInView="visible"
-    viewport={{ once: true, amount: 0.3 }}
-    custom={delay}
-  >
-    {children}
-  </motion.div>
-);
+function NeuralSeparator({ label }: NeuralSeparatorProps) {
+  return (
+    <div className="relative mt-4 flex items-center justify-center">
+      <div className="h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+      {label && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white/50 backdrop-blur-md">
+            <span className="h-1 w-6 rounded-full bg-gradient-to-r from-[#00F0FF] via-[#9b6cff] to-[#BC13FE]" />
+            {label}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-// HERO
-const Hero = () => (
-  <section id="landing" className={`${ui.spacing.gutterX} pb-24 pt-10 md:pt-16 lg:pt-20`}>
-    <div className="mx-auto max-w-7xl grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)] items-center">
-      {/* COLONNA TESTO */}
+function CoscienzaOrbSection() {
+  return (
+    <section className="relative mt-10 flex justify-center">
       <motion.div
-        className="space-y-6"
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
-        custom={0.05}
+        className="relative h-56 w-56 rounded-full border border-white/15 bg-black/80 shadow-[0_0_90px_rgba(236,72,153,0.65)]"
+        initial={{ scale: 0.9, opacity: 0 }}
+        whileInView={{ scale: 1, opacity: 1 }}
+        viewport={{ once: true, amount: 0.4 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
       >
-        <h1 className="text-3xl sm:text-4xl lg:text-[2.8rem] font-semibold leading-tight tracking-tight">
-          Cerbero — Switch On.<br />
-          <span className="text-white/90">Sit back and Relax.</span>
-        </h1>
+        {/* Glow interno */}
+        <div className="absolute inset-4 rounded-full bg-[radial-gradient(circle_at_30%_20%,rgba(236,56,255,0.55),transparent_55%),radial-gradient(circle_at_70%_70%,rgba(0,234,255,0.6),transparent_55%)] blur-[1px]" />
 
-        <p className="max-w-xl text-sm sm:text-base text-white font-bold">
-          Cerbero AI non è un bot: è una piattaforma basata su{" "}
-          <span className="text-sky-300">tre Intelligenze Artificiali unite sotto una Coscienza</span>{" "}
-          progettata per i mercati. Analizza e opera su{" "}
-          <span className="text-sky-300">forex, oro, petrolio e cripto</span>,
-          adattandosi in tempo reale come un sistema ispirato agli hedge fund, ma con i fondi sempre nel tuo{" "}
-          <span className="text-sky-300">portafoglio digitale personale</span>.
-          <br />
-          Tu vivi. Cerbero lavora.
-        </p>
-
-        <div className="flex flex-wrap gap-3 pt-1">
-          <a
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold bg-white text-[#050816] hover:opacity-90 transition shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
-          >
-            Attiva Autopilot 99€/mese
-          </a>
-
-          <a
-            href="/come-funziona"
-            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-medium border border-white/40 bg-black/70 text-white hover:bg-black/80 transition shadow-[0_14px_40px_rgba(0,0,0,0.55)]"
-          >
-            Come funziona
-          </a>
+        {/* Logo Cerbero al centro */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-black/50 backdrop-blur-md">
+            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_0%,rgba(236,56,255,0.35),transparent_60%)]" />
+            <Image
+              src="/branding/cerbero-logo.svg"
+              alt="Cerbero AI logo"
+              width={80}
+              height={80}
+              className="relative z-10 object-contain drop-shadow-[0_0_22px_rgba(56,189,248,0.95)]"
+            />
+          </div>
         </div>
 
-        <p className="text-xs text-white/45 max-w-md pt-1">
-          Nessuna consulenza finanziaria. Il capitale resta sempre nel tuo portafoglio digitale dedicato.
-        </p>
+        {/* Linee neurali sottili intorno al logo */}
+        <motion.div
+          className="pointer-events-none absolute inset-7"
+          animate={{ opacity: [0.4, 0.9, 0.4], rotate: [0, 6, -6, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <svg viewBox="0 0 200 200" className="h-full w-full opacity-75">
+            <defs>
+              <linearGradient id="orbStroke" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#ec38ff" />
+                <stop offset="50%" stopColor="#9b6cff" />
+                <stop offset="100%" stopColor="#00eaff" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M10 100 Q 50 20 100 60 T 190 100"
+              fill="none"
+              stroke="url(#orbStroke)"
+              strokeWidth="1"
+              strokeOpacity="0.7"
+            />
+            <path
+              d="M20 140 Q 60 80 110 90 T 180 60"
+              fill="none"
+              stroke="url(#orbStroke)"
+              strokeWidth="0.8"
+              strokeOpacity="0.5"
+            />
+            <path
+              d="M30 40 Q 80 40 120 70 T 170 140"
+              fill="none"
+              stroke="url(#orbStroke)"
+              strokeWidth="0.7"
+              strokeOpacity="0.4"
+            />
+          </svg>
+        </motion.div>
+
+        {/* HUD testo migliorato */}
+        <div className="pointer-events-none absolute -bottom-14 left-1/2 flex -translate-x-1/2 flex-col items-center text-center">
+          <span className="rounded-full border border-white/15 bg-black/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80 backdrop-blur-md">
+            Coscienza attiva
+          </span>
+          <span className="mt-2 text-[11px] text-white/70">
+            Analisi continua · Esecuzione autonoma
+          </span>
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
+/* ---------------------------- VISION SECTION ---------------------------- */
+
+function VisionSection() {
+  return (
+    <motion.section
+      id="vision"
+      variants={sectionContainer}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.4 }}
+      className="space-y-6"
+    >
+      <motion.div
+        variants={fadeInUp}
+        className="inline-flex items-center rounded-full border border-violet-400/30 bg-violet-600/15 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-violet-100/90"
+      >
+        La Visione
       </motion.div>
 
-      {/* COLONNA DESTRA – INDEX */}
-      <motion.div className="relative" variants={fadeUp} initial="hidden" animate="visible" custom={0.15}>
+      <motion.div
+        variants={fadeInUp}
+        className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)] lg:items-start"
+      >
+        <div className="space-y-4">
+          <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
+            <span>IL TUO CAPITALE</span>
+            <span className="block bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
+              HA PRESO VITA.
+            </span>
+          </h2>
+          <p className="text-sm text-white/70 sm:text-base">
+            Abbiamo fuso tre Intelligenze Artificiali in un&apos;unica{' '}
+            <span className="bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text font-semibold text-transparent">
+              Coscienza Finanziaria
+            </span>
+            . Cerbero non dorme, non si stanca e non ha paura.
+          </p>
+          <p className="text-sm text-white/70 sm:text-base">
+            Lavora sui mercati 24/7 con un unico obiettivo:
+            far crescere la tua ricchezza mentre tu vivi la tua vita.
+          </p>
+        </div>
+
+        <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+          <h3 className="text-sm font-semibold text-white/80">
+            Cosa fa mentre tu dormi:
+          </h3>
+          <ul className="space-y-3 text-sm text-white/70">
+            <li className="flex gap-2">
+              <span className="mt-0.5">🟣</span>
+              <div>
+                <p className="font-medium text-white/80">Scansiona il Mondo</p>
+                <p>Analizza milioni di dati globali ogni millisecondo.</p>
+              </div>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-0.5">🔵</span>
+              <div>
+                <p className="font-medium text-white/80">Protegge il Capitale</p>
+                <p>Calcola il rischio prima di ogni mossa. La sicurezza è matematica.</p>
+              </div>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-0.5">🟢</span>
+              <div>
+                <p className="font-medium text-white/80">Colpisce con Precisione</p>
+                <p>Esegue operazioni chirurgiche solo quando le probabilità sono a tuo favore.</p>
+              </div>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-0.5">🟡</span>
+              <div>
+                <p className="font-medium text-white/80">Ti rende Libero</p>
+                <p>Tu guardi i risultati. Lui fa il lavoro sporco.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+}
+
+/* ---------------------------- TRUST SECTION ----------------------------- */
+
+function TrustSection() {
+  return (
+    <motion.section
+      id="trust"
+      variants={sectionContainer}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.4 }}
+      className="space-y-6"
+    >
+      <motion.div
+        variants={fadeInUp}
+        className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-600/15 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-100/90"
+      >
+        Come funziona
+      </motion.div>
+
+      <motion.div variants={fadeInUp} className="grid gap-8 lg:grid-cols-2">
+        {/* Testo a sinistra */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <span>LA TUA CASSAFORTE DIGITALE.</span>
+            <span className="mt-1 block bg-gradient-to-r from-emerald-200 to-sky-200 bg-clip-text text-transparent">
+              NOI ABBIAMO L&apos;INTELLIGENZA, TU HAI LE CHIAVI.
+            </span>
+          </h2>
+          <p className="text-sm text-white/70 sm:text-base">
+            La sicurezza è la nostra ossessione. Quando ti iscrivi, creiamo una{' '}
+            <span className="font-semibold text-white">Cassaforte Personale (Wallet)</span> dedicata solo a te.
+          </p>
+          <ul className="space-y-2 text-sm text-white/70">
+            <li>• Noi non tocchiamo mai i tuoi soldi.</li>
+            <li>• Tu ci dai solo il permesso di farli lavorare.</li>
+            <li>• Puoi chiudere tutto e andartene quando vuoi. È la libertà finanziaria definitiva.</li>
+          </ul>
+        </div>
+
+        {/* Colonna destra: LIVE OPERATIONS + flusso 4 step */}
+        <div className="space-y-4">
+          {/* Live Operations widget */}
+          <LiveOperationsFeed />
+
+          {/* Flusso operativo in 4 step */}
+          <motion.div
+            variants={fadeInUp}
+            className="space-y-4 rounded-3xl border border-white/10 bg-slate-950/80 p-5 backdrop-blur-xl"
+          >
+            <h3 className="text-sm font-semibold text-white/80">
+              Flusso operativo in 4 step:
+            </h3>
+            <ol className="space-y-3 text-sm text-white/70">
+              <li className="flex gap-3">
+                <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-[11px] font-semibold text-emerald-300">
+                  1
+                </span>
+                <div>
+                  <p className="font-medium text-white/80">Crea il Conto</p>
+                  <p>Registrati in 30 secondi.</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-[11px] font-semibold text-emerald-300">
+                  2
+                </span>
+                <div>
+                  <p className="font-medium text-white/80">Carica Energia</p>
+                  <p>Deposita il capitale che vuoi far lavorare (Euro o Carta).</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-[11px] font-semibold text-emerald-300">
+                  3
+                </span>
+                <div>
+                  <p className="font-medium text-white/80">Accendi Cerbero</p>
+                  <p>Attiva l&apos;Autotrading e torna alla tua vita.</p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-[11px] font-semibold text-emerald-300">
+                  4
+                </span>
+                <div>
+                  <p className="font-medium text-white/80">Goditi i Risultati</p>
+                  <p>Guarda il saldo crescere e preleva i guadagni direttamente in banca.</p>
+                </div>
+              </li>
+            </ol>
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+}
+
+/* ----------------------- LIVE OPERATIONS WIDGET ------------------------ */
+
+function LiveOperationsFeed() {
+  return (
+    <motion.div
+      variants={fadeIn}
+      className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/15 via-slate-900/70 to-sky-500/15 p-4 backdrop-blur-xl"
+    >
+      <div className="mb-3 flex items-center justify-between text-[11px] text-white/70">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+          Live Operations Feed
+        </span>
+        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-emerald-100/80">
+          Always On
+        </span>
+      </div>
+
+      {/* Fade top/bottom */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-slate-950 via-slate-950/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+      <div className="relative h-44 overflow-hidden">
         <motion.div
-          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-5 sm:p-6 lg:p-7 shadow-[0_22px_70px_rgba(0,0,0,0.75)]"
-          whileHover={{ y: -6, boxShadow: "0 26px 80px rgba(0,0,0,0.9)" }}
-          transition={{ type: "spring", stiffness: 220, damping: 22 }}
+          className="flex flex-col gap-2"
+          animate={{ y: ['0%', '-50%'] }}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.16em] text-sky-400">Cerbero Index</p>
-              <p className="text-sm text-white/80">Coming soon</p>
+          {[...liveFeedData, ...liveFeedData].map((item, idx) => (
+            <div
+              key={`${item.symbol}-${item.time}-${idx}`}
+              className="flex items-center justify-between rounded-xl border border-white/8 bg-black/50 px-3 py-2 text-[11px] text-white/70 backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">{item.icon}</span>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-white/85">
+                    {item.type} • {item.symbol}
+                  </span>
+                  <span className="text-[10px] text-white/60">{item.action}</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-0.5">
+                <span
+                  className={`text-[11px] ${
+                    item.type === 'PROFIT'
+                      ? 'text-emerald-300'
+                      : item.type === 'ENTRY'
+                      ? 'text-white'
+                      : 'text-sky-300'
+                  }`}
+                >
+                  {item.value}
+                </span>
+                <span className="text-[9px] text-white/45">{item.time}</span>
+              </div>
             </div>
-            <button className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/70">
-              Preview
-            </button>
+          ))}
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* --------------------------- PRICING SECTION ---------------------------- */
+
+function PricingSection() {
+  return (
+    <motion.section
+      id="pricing"
+      variants={sectionContainer}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.4 }}
+      className="space-y-6"
+    >
+      <motion.div
+        variants={fadeInUp}
+        className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-600/15 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-sky-100/90"
+      >
+        Pricing
+      </motion.div>
+
+      <motion.div
+        variants={fadeInUp}
+        className="flex flex-col items-center gap-8 text-center"
+      >
+        <div className="space-y-3">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <span>UN SOLO ABBONAMENTO.</span>
+            <span className="block bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
+              ACCESSO TOTALE.
+            </span>
+          </h2>
+          <p className="max-w-2xl text-sm text-white/70 sm:text-base">
+            Nessuna commissione nascosta sui profitti. Nessuna sorpresa.
+            Con una quota fissa mensile, ottieni la stessa tecnologia usata dai grandi fondi d&apos;investimento.
+            Se Cerbero ti fa guadagnare 1.000€ o 10.000€, il prezzo per te non cambia.
+          </p>
+        </div>
+
+        <motion.div
+          variants={fadeIn}
+          className="w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-950 to-sky-950/70 p-6 shadow-[0_0_45px_rgba(56,189,248,0.45)] backdrop-blur-2xl"
+        >
+          <div className="mb-6 flex items-baseline justify-center gap-2">
+            <span className="text-4xl font-semibold text-white">99€</span>
+            <span className="text-xs text-white/60">/ mese</span>
           </div>
 
-          {/* BARRE GRAPH */}
-          <div className="h-40 sm:h-44 rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative">
-            <div className="absolute inset-0 flex items-end gap-[3px] px-4">
-              {Array.from({ length: 40 }).map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="flex-1 rounded-t-full bg-gradient-to-t from-cyan-400/20 via-cyan-400/80 to-white"
-                  initial={{ height: 30 + (i % 10) * 5 }}
-                  animate={{
-                    height: [
-                      40 + (i % 10) * 5,
-                      90 + (i % 10) * 5,
-                      40 + (i % 10) * 5,
-                    ],
-                  }}
-                  transition={{
-                    duration: 3 + (i % 5) * 0.2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.03,
-                  }}
-                />
-              ))}
-            </div>
-            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#050816]/95 to-transparent" />
-          </div>
+          <ul className="mb-6 space-y-2 text-left text-sm text-white/70">
+            <li className="flex gap-2">
+              <span className="mt-0.5">🔵</span>
+              <span>Autotrading illimitato 24/7.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-0.5">🔵</span>
+              <span>Wallet personale dedicato incluso.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-0.5">🔵</span>
+              <span>Prelievi rapidi in Euro.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-0.5">🔵</span>
+              <span>Report fiscale automatico per semplificare la dichiarazione.</span>
+            </li>
+          </ul>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3 text-[11px]">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <div className="text-white/50 mb-1">Modo</div>
-              <div className="text-white/85 font-medium">Autopilot</div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <div className="text-white/50 mb-1">Focus</div>
-              <div className="text-white/85 font-medium">Euro-in / Euro-out</div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <div className="text-white/50 mb-1">Stato</div>
-              <div className="text-emerald-400 font-medium">Pronto per v1</div>
-            </div>
+          <div className="flex flex-col gap-3">
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <Link
+                href="/signup"
+                className="inline-flex w-full items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_0_35px_rgba(59,130,246,0.7)] transition hover:brightness-110"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(135deg, #00eaff, #9b6cff, #ec38ff)',
+                }}
+              >
+                Inizia a guadagnare ora
+              </Link>
+            </motion.div>
+            <p className="text-[11px] text-white/50">
+              Pagamento gestito tramite Stripe. Dopo l&apos;attivazione vieni portato
+              direttamente nella dashboard per configurare il tuo wallet.
+            </p>
           </div>
         </motion.div>
       </motion.div>
-    </div>
-  </section>
-);
-/* =======================================================================================
-   SEZIONE “PERCHÉ CERBERO AI”
-======================================================================================= */
+    </motion.section>
+  );
+}
 
-const ValueSection = () => (
-  <section id="value" className="px-4 sm:px-6 lg:px-12 py-24">
-    <h2 className="text-3xl md:text-4xl font-bold mb-6">
-      Perché Cerbero <span className="text-sky-300">AI</span>
-    </h2>
+/* ------------------------------ FOOTER ---------------------------------- */
 
-    <p className="text-white text-base max-w-2xl mb-12 font-bold">
-      Non devi diventare trader. Devi solo accendere la Coscienza AI e lasciare che operi
-      sul capitale nel tuo portafoglio digitale, che resta sempre sotto il tuo controllo.
-    </p>
-
-    <div className="grid md:grid-cols-3 gap-6">
-      {/* Card 1 */}
-      <Card delay={0.05}>
-        <div className="text-sm text-sky-400 mb-1 font-medium">
-          Autopilot · 99€/mese
-        </div>
-        <h3 className="text-lg font-semibold mb-2">Coscienza AI sempre attiva</h3>
-        <p className="text-sm text-white font-bold leading-relaxed">
-          Cerbero monitora i mercati in tempo reale, apre e chiude operazioni. Tu vedi tutto
-          dalla dashboard e puoi mettere l’Autopilot in pausa quando vuoi.
-        </p>
-      </Card>
-
-      {/* Card 2 */}
-      <Card delay={0.12}>
-        <div className="text-sm text-sky-400 mb-1 font-medium">
-          Portafoglio personale
-        </div>
-        <h3 className="text-lg font-semibold mb-2">
-          Il tuo portafoglio digitale personale
-        </h3>
-        <p className="text-sm text-white font-semibold leading-relaxed">
-          I fondi sono separati e intestati solo a te sul tuo smart contract dedicato. Le chiavi
-          restano tue. Depositi, metti in pausa o prelevi quando vuoi.
-        </p>
-      </Card>
-
-      {/* Card 3 */}
-      <Card delay={0.18}>
-        <div className="text-sm text-sky-400 mb-1 font-medium">
-          Tecnologia verificabile
-        </div>
-        <h3 className="text-lg font-semibold mb-2">
-          Infrastruttura, non promesse
-        </h3>
-        <p className="text-sm text-white font-bold leading-relaxed">
-          Google Cloud per l’infrastruttura, Arbitrum One + USDC native on-chain, esecuzione su Gains Network.
-          Tutto tracciabile, osservabile e verificabile.
-        </p>
-      </Card>
-    </div>
-  </section>
-);
-
-
-/* =======================================================================================
-   FOOTER — identico a Pricing e Come Funziona
-======================================================================================= */
-
-const Footer = () => (
-  <footer className="mt-24 border-t border-white/10 bg-gradient-to-b from-black/40 via-black/80 to-black/95 px-4 sm:px-6 lg:px-12 py-10">
-    <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
-
-      {/* Logo */}
-      <div className="flex items-center gap-3">
-        <Image
-          src="/branding/cerbero-logo.svg"
-          alt="Cerbero AI logo"
-          width={40}
-          height={40}
-          className="drop-shadow-[0_0_22px_rgba(56,189,248,0.95)]"
-        />
-        <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold">
-            Cerbero <span className="text-sky-400">AI</span>
-          </span>
-          <span className="text-[11px] text-white/60">
-            © 2025 Cerbero. All rights reserved.
-          </span>
-        </div>
-      </div>
-
-      {/* Powered by */}
-      <div className="flex flex-col items-center md:items-end gap-4">
-        <div className="flex flex-wrap justify-center md:justify-end gap-2 text-[11px] text-white/60">
-          <span className="uppercase tracking-[0.18em] text-[10px] text-white/40">
-            Powered by
-          </span>
-
-          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
-            Google Cloud
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
-            Arbitrum One
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
-            USDC (Circle)
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
-            Gains Network (GNS)
-          </span>
-        </div>
-
-        <div className="flex flex-wrap justify-center md:justify-end gap-4 text-[11px] text-white/60">
-          <a href="/legal/privacy" className="hover:text-white transition">Privacy</a>
-          <a href="/legal/terms" className="hover:text-white transition">Termini & Condizioni</a>
-          <a href="/legal/cookies" className="hover:text-white transition">Cookie</a>
-        </div>
-      </div>
-
-    </div>
-  </footer>
-);
-
-
-/* =======================================================================================
-   ROOT EXPORT
-======================================================================================= */
-
-export default function CerberoLandingPage() {
+function SiteFooter() {
   return (
-    <Shell>
-      <Nav />
-      <Hero />
-      <ValueSection />
-      <Footer />
-    </Shell>
+    <footer className="mt-16 border-t border-white/10 bg-gradient-to-b from-black/40 via-black/80 to-black/95 pt-8 pb-6">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row md:items-start">
+        {/* Logo + claim */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center">
+            <Image
+              src="/branding/cerbero-logo.svg"
+              alt="Cerbero AI logo"
+              width={40}
+              height={40}
+              className="object-contain drop-shadow-[0_0_22px_rgba(56,189,248,0.95)]"
+            />
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-semibold">
+              Cerbero <span className="text-sky-400">AI</span>
+            </span>
+            <span className="text-[11px] text-white/60">
+              © 2025 Cerbero. All rights reserved.
+            </span>
+          </div>
+        </div>
+
+        {/* Powered by + legal */}
+        <div className="flex flex-col items-center gap-4 md:items-end">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-white/60 md:justify-end">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Powered by
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
+              Google Cloud
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
+              Arbitrum One
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
+              USDC (Circle)
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
+              Gains Network (GNS)
+            </span>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-4 text-[11px] text-white/60 md:justify-end">
+            <a href="/legal/privacy" className="transition hover:text-white">
+              Privacy
+            </a>
+            <a href="/legal/terms" className="transition hover:text-white">
+              Termini &amp; Condizioni
+            </a>
+            <a href="/legal/cookies" className="transition hover:text-white">
+              Cookie
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }

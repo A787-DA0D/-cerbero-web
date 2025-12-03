@@ -7,9 +7,15 @@ type TransakModalProps = {
   isOpen: boolean;
   onClose: () => void;
   transakUrl: string | null;
+  mode: "BUY" | "SELL";
 };
 
-export function TransakModal({ isOpen, onClose, transakUrl }: TransakModalProps) {
+export function TransakModal({
+  isOpen,
+  onClose,
+  transakUrl,
+  mode,
+}: TransakModalProps) {
   if (!isOpen || !transakUrl) return null;
 
   return (
@@ -20,7 +26,7 @@ export function TransakModal({ isOpen, onClose, transakUrl }: TransakModalProps)
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        {/* click fuori per chiudere */}
+        {/* close by clicking outside */}
         <div className="absolute inset-0" onClick={onClose} />
 
         <motion.div
@@ -29,9 +35,12 @@ export function TransakModal({ isOpen, onClose, transakUrl }: TransakModalProps)
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
         >
+          {/* HEADER */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
             <span className="text-sm font-medium text-white/80">
-              Ricarica fondi con Transak (STAGING)
+              {mode === "BUY"
+                ? "Ricarica fondi con Transak (STAGING)"
+                : "Prelievo fondi (SELL) via Transak (STAGING)"}
             </span>
             <button
               onClick={onClose}

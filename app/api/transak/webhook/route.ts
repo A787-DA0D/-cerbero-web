@@ -1,81 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const TRANSAK_WEBHOOK_SECRET =
-  process.env.TRANSAK_WEBHOOK_SECRET as string | undefined;
+const TRANSAK_WEBHOOK_SECRET = process.env
+  .TRANSAK_WEBHOOK_SECRET as string | undefined;
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
 export async function POST(req: NextRequest) {
   try {
-    // -----------------------------
-    // 0) Check configurazione
-    // -----------------------------
     if (!TRANSAK_WEBHOOK_SECRET) {
-      console.error("[Transak Webhook] TRANSAK_WEBHOOK_SECRET mancante");
+      console.error("[Transak Webhook] TRANSAK_WEBHOOK_SECRET non impostata");
       return NextResponse.json(
-        { ok: false, error: "Server misconfigured (missing webhook secret)" },
+        { ok: false, error: "Server misconfigured (no webhook secret)" },
         { status: 500 }
       );
     }
 
-    // -----------------------------
-    // 1) Autenticazione webhook
-    // -----------------------------
-    const secretHeader = req.headers.get("x-transak-secret");
-    if (!secretHeader || secretHeader !== TRANSAK_WEBHOOK_SECRET) {
-      console.warn("[Transak Webhook] Secret non valido o assente");
+    const sig = req.headers.get("x-transak-secret");
+
+    if (!sig || sig !== TRANSAK_WEBHOOK_SECRET) {
+      console.error("[Transak Webhook] Secret header mismatch", { sig });
       return NextResponse.json(
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    // -----------------------------
-    // 2) Parse body
-    // -----------------------------
-    const body: any = await req.json();
-    console.log("[Transak Webhook] Payload ricevuto:", body);
+    const body = await req.json();
 
-    const rawStatus =
+    // 1) Leggiamo lo status ordine
+    const status =
       body.status ||
-      body.event ||
       body.webhookData?.status ||
-      body.transferStatus;
+      body.orderStatus ||
+      body.webhookData?.orderStatus;
 
-    if (!rawStatus) {
-      return NextResponse.json(
-        { ok: false, error: "Missing status in payload" },
-        { status: 400 }
-      );
+    if (status !== "COMPLETED") {
+      console.log("[Transak Webhook] Ignored status:", status);
+      return NextResponse.json({ ok: true, status, ignored: true });
     }
 
-    const status = String(rawStatus).toUpperCase();
-
-    const COMPLETED_STATUSES = [
-      "COMPLETED",
-      "SUCCESS",
-      "DONE",
-      "COMPLETED_VERIFIED",
-    ];
-
-    if (!COMPLETED_STATUSES.includes(status)) {
-      console.log("[Transak Webhook] Status non definitivo, skip:", status);
-      return NextResponse.json({
-        ok: true,
-        skipped: true,
-        reason: "Status not completed",
-        status,
-      });
-    }
-
-    // -----------------------------
-    // 3) Identità utente
-    // -----------------------------
+    // 2) Identità utente
     const email: string | null =
+      body.user?.email ||
       body.customerEmail ||
-      body.userEmail ||
-      body.email ||
-      body.webhookData?.customerEmail ||
+      body.webhookData?.user?.email ||
       null;
 
     const walletAddress: string | null =
@@ -84,43 +52,50 @@ export async function POST(req: NextRequest) {
       body.webhookData?.walletAddress ||
       null;
 
-    if (!email && !walletAddress) {
+    if (!email || !walletAddress) {
+      console.error("[Transak Webhook] Missing email or walletAddress", {
+        email,
+        walletAddress,
+      });
       return NextResponse.json(
-        {
-          ok: false,
-          error: "Missing user identity (email or walletAddress required)",
-        },
+        { ok: false, error: "Missing email or walletAddress" },
         { status: 400 }
       );
     }
 
-    // -----------------------------
-    // 4) Importo transak → USDC
-    // -----------------------------
-    const cryptoAmountRaw =
+    // 3) Importo in crypto (USDC) — valore assoluto
+    const rawAmount =
       body.cryptoAmount ||
-      body.cryptoAmountInUsd ||
+      body.amount ||
       body.webhookData?.cryptoAmount ||
-      null;
+      body.conversionPriceData?.cryptoAmount ||
+      0;
 
-    if (!cryptoAmountRaw) {
-      return NextResponse.json(
-        { ok: false, error: "Missing cryptoAmount" },
-        { status: 400 }
-      );
-    }
-
-    const deltaUSDC = Number(cryptoAmountRaw);
-    if (!Number.isFinite(deltaUSDC)) {
+    const amount = Number(rawAmount);
+    if (!amount || Number.isNaN(amount)) {
+      console.error("[Transak Webhook] Invalid crypto amount:", rawAmount);
       return NextResponse.json(
         { ok: false, error: "Invalid cryptoAmount" },
         { status: 400 }
       );
     }
 
-    // -----------------------------
+    // 4) BUY vs SELL → decidiamo se è deposito o prelievo
+    const rawSide: string | null =
+      body.isBuyOrSell ||
+      body.conversionPriceData?.isBuyOrSell ||
+      body.webhookData?.isBuyOrSell ||
+      body.webhookData?.conversionPriceData?.isBuyOrSell ||
+      null;
+
+    const side =
+      typeof rawSide === "string" ? rawSide.toUpperCase().trim() : "BUY";
+
+    const isSell = side === "SELL";
+    const deltaUSDC = isSell ? -Math.abs(amount) : Math.abs(amount);
+    const movementType = isSell ? "withdraw" : "deposit";
+
     // 5) Metadati utili
-    // -----------------------------
     const txHash: string | null =
       body.transactionHash ||
       body.txHash ||
@@ -134,10 +109,11 @@ export async function POST(req: NextRequest) {
       body.webhookData?.orderId ||
       null;
 
-    // -----------------------------
-    // 6) Chiamata al nostro update-balance
-    // -----------------------------
-    const updateRes = await fetch(`${APP_URL}/api/tenant/update-balance`, {
+    // 6) Chiamiamo il nostro endpoint centrale di update-balance (protetto)
+    const baseUrl =
+      process.env.APP_URL || new URL(req.url).origin;
+
+    const updateRes = await fetch(`${baseUrl}/api/tenant/update-balance`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -147,7 +123,7 @@ export async function POST(req: NextRequest) {
         email,
         walletMagic: walletAddress,
         deltaUSDC,
-        type: "deposit",
+        type: movementType,
         source: "transak",
         chain: "arbitrum_one",
         txHash,
@@ -156,33 +132,41 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const updateJson = await updateRes.json().catch(() => null);
-
-    if (!updateRes.ok || !updateJson?.ok) {
-      console.error("[Transak Webhook] update-balance FAILED", {
+    if (!updateRes.ok) {
+      const text = await updateRes.text();
+      console.error("[Transak Webhook] update-balance failed:", {
         status: updateRes.status,
-        response: updateJson,
+        text,
       });
-
       return NextResponse.json(
-        { ok: false, error: "Failed to update tenant balance" },
+        { ok: false, error: "update-balance failed", detail: text },
         { status: 500 }
       );
     }
 
-    console.log("[Transak Webhook] Balance aggiornato OK", {
+    const json = await updateRes.json();
+    console.log("[Transak Webhook] OK", {
       email,
       walletAddress,
+      status,
+      side,
+      movementType,
       deltaUSDC,
-      txHash,
-      externalRef,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      status,
+      side,
+      deltaUSDC,
+      email,
+      walletAddress,
+      update: json,
+    });
   } catch (err) {
-    console.error("[Transak Webhook] Errore inatteso:", err);
+    console.error("[Transak Webhook] Error:", err);
     return NextResponse.json(
-      { ok: false, error: "Internal server error" },
+      { ok: false, error: "Unhandled error in webhook" },
       { status: 500 }
     );
   }
