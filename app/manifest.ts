@@ -2,12 +2,12 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Cerbero AI',
-    short_name: 'CerberoAI',
-    description: 'Cerbero AI – AI + DeFi autotrading ecosystem.',
+    name: 'Cerbero AI – Autotrading Ecosystem',
+    short_name: 'Cerbero AI',
+    description:
+      'Cerbero è una Coscienza Finanziaria Autonoma: sistema di autotrading istituzionale accessibile a tutti.',
     start_url: '/',
     display: 'standalone',
-    orientation: 'portrait',
     background_color: '#000000',
     theme_color: '#000000',
     icons: [
@@ -25,7 +25,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/icon-maskable-512.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'any maskable',
+        purpose: 'maskable',
       },
     ],
   };
