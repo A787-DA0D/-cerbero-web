@@ -1,225 +1,321 @@
-"use client";
+'use client';
 
-import Image from "next/image";
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+
+type MeResponse = {
+  ok: boolean;
+  email?: string;
+  wallet?: string;
+};
+
+function formatAddress(addr: string | null | undefined) {
+  if (!addr || addr.length < 10) return '—';
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const sectionContainer = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
 
 export default function AccountPage() {
+  const [email, setEmail] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<string | null>(null);
+  const [isLoadingMe, setIsLoadingMe] = useState(true);
+
+  const [privateKey, setPrivateKey] = useState<string | null>(null);
+  const [isPkVisible, setIsPkVisible] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadMe = async () => {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('cerbero_session')
+          : null;
+
+      if (!token) {
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/me', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data: MeResponse = await res.json();
+
+        if (!res.ok || !data?.ok) throw new Error('invalid session');
+
+        setEmail(data.email ?? null);
+        setWallet(data.wallet ?? null);
+
+        // TODO: qui in futuro potrai caricare la chiave privata da un endpoint tipo /api/account/private-key
+        // setPrivateKey(data.privateKey);
+      } catch (err) {
+        console.error('[account] /api/me error:', err);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cerbero_session');
+          window.location.href = '/login';
+        }
+      } finally {
+        setIsLoadingMe(false);
+      }
+    };
+
+    loadMe();
+  }, []);
+
+  const handleCopy = async (value: string | null, label: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus(`${label} copiata negli appunti`);
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch (err) {
+      console.error('Clipboard error:', err);
+      setCopyStatus('Impossibile copiare. Copia manualmente.');
+      setTimeout(() => setCopyStatus(null), 2000);
+    }
+  };
+
+  const maskedPk =
+    privateKey && privateKey.length > 16
+      ? `${privateKey.slice(0, 6)}···${privateKey.slice(-6)}`
+      : privateKey || 'Non ancora disponibile';
+
   return (
-    <main className="min-h-screen bg-cerbero-trust text-white flex justify-center px-4">
-      {/* Glow di sfondo come Login/Signup */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <div
-          className="absolute -top-40 right-0 w-[34rem] h-[34rem] rounded-full blur-3xl opacity-35"
-          style={{
-            background: "radial-gradient(circle, #22d3ee 0%, transparent 65%)",
-          }}
-        />
-        <div
-          className="absolute -bottom-40 -left-24 w-[36rem] h-[36rem] rounded-full blur-3xl opacity-30"
-          style={{
-            background: "radial-gradient(circle, #4f7cff 0%, transparent 65%)",
-          }}
-        />
+    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+      {/* Background stile home/dashboard */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-black" />
+        <div className="absolute -top-40 -left-40 h-[420px] w-[420px] rounded-full bg-fuchsia-600/40 blur-3xl" />
+        <div className="absolute top-1/3 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/25 blur-3xl" />
+        <div className="absolute bottom-[-160px] left-1/3 h-[480px] w-[480px] rounded-full bg-violet-500/30 blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-5xl py-10 md:py-12">
-        {/* HEADER CON LOGO */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-2xl bg-black/40 border border-white/15 flex items-center justify-center overflow-hidden">
-              <Image
-                src="/branding/cerbero-logo.svg"
-                alt="Cerbero logo"
-                width={36}
-                height={36}
-                className="object-contain"
-              />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight">
-                Cerbero <span className="text-white/60">AI</span>
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/0 to-black/85" />
+
+      <main className="relative z-10 mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 lg:px-6 lg:py-14">
+        {/* HEADER */}
+        <motion.header
+          variants={sectionContainer}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+        >
+          {/* TITOLO + TESTO */}
+          <div className="space-y-3 md:max-w-xl">
+            <motion.div variants={fadeInUp} className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center">
+                <Image
+                  src="/branding/cerbero-logo.svg"
+                  alt="Cerbero AI logo"
+                  width={40}
+                  height={40}
+                  className="object-contain drop-shadow-[0_0_22px_rgba(56,189,248,0.95)]"
+                />
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-[11px] uppercase tracking-[0.2em] text-white/40">
+                  Cerbero Account
+                </span>
+                <span className="text-sm font-semibold">
+                  Il tuo{' '}
+                  <span className="bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
+                    centro di controllo
+                  </span>{' '}
+                  personale.
+                </span>
+              </div>
+            </motion.div>
+
+            <motion.p
+              variants={fadeInUp}
+              className="max-w-2xl text-sm leading-relaxed text-white/75"
+            >
+              Da questa pagina puoi verificare i tuoi dati, il tuo wallet su
+              Arbitrum One e, a breve, visualizzare la tua chiave privata Magic.
+              <span className="mt-1 block text-xs text-amber-300/95">
+                Importante: Cerbero non conserva mai la tua chiave privata. Sei
+                tu l&apos;unico proprietario del tuo wallet.
               </span>
-              <span className="text-[10px] text-white/55">
-                Switch On. Sit back and Relax.
-              </span>
-            </div>
+            </motion.p>
           </div>
 
-          <span className="text-[11px] text-white/60">
-            ID utente demo • #C-0001
-          </span>
-        </div>
+          {/* BOTTONE RITORNO DASHBOARD */}
+          <motion.div
+            variants={fadeInUp}
+            className="mt-2 flex justify-start md:mt-0 md:justify-end"
+          >
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/80 hover:bg-white/10"
+            >
+              Torna alla dashboard
+            </Link>
+          </motion.div>
+        </motion.header>
 
-        {/* TITOLO + SOTTOTITOLO */}
-        <header className="space-y-2 mb-7">
-          <p className="text-xs tracking-[0.25em] text-emerald-300/70 uppercase">
-            ACCOUNT CENTER
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Il tuo profilo Cerbero
-          </h1>
-          <p className="mt-1 text-sm text-white/65 max-w-2xl">
-            Gestisci i tuoi dati, il piano Autopilot e le impostazioni di
-            sicurezza per l&apos;accesso alla Coscienza AI.
-          </p>
-        </header>
+        {/* CARDS PRINCIPALI */}
+        <motion.section
+          variants={sectionContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid gap-6 md:grid-cols-2"
+        >
+          {/* CARD DATI ACCOUNT */}
+          <motion.div
+            variants={fadeInUp}
+            className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-950 to-black/90 p-5 backdrop-blur-xl shadow-[0_0_35px_rgba(0,0,0,0.6)]"
+          >
+            <h2 className="text-sm font-semibold text-white/85">Dati account</h2>
+            <p className="mt-1 text-[11px] text-white/60">
+              Email di accesso e wallet Magic collegato alla tua Coscienza
+              Finanziaria.
+            </p>
 
-        {/* GRID PRINCIPALE */}
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-          {/* Colonna sinistra: profilo + abbonamento */}
-          <div className="space-y-6">
-            {/* Profilo */}
-            <section className="rounded-3xl border border-white/12 bg-white/8 px-6 py-5 shadow-[0_26px_80px_rgba(0,0,0,0.75)]">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold">Profilo</h2>
-                  <p className="text-xs text-white/60">
-                    Informazioni base del tuo account Cerbero.
-                  </p>
-                </div>
-                <span className="text-[11px] rounded-full bg-emerald-500/15 border border-emerald-400/60 px-3 py-1 text-emerald-300">
-                  Identità verificata (demo)
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-white/45">
+                  Email
                 </span>
-              </div>
-
-              <div className="grid gap-4 text-sm">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-white/50 mb-1">
-                      Nome e cognome
-                    </div>
-                    <div className="rounded-2xl bg-black/35 border border-white/10 px-4 py-2.5">
-                      Mario Rossi
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-white/50 mb-1">Email</div>
-                    <div className="rounded-2xl bg-black/35 border border-white/10 px-4 py-2.5">
-                      nome@esempio.com
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-white/50 mb-1">Paese</div>
-                    <div className="rounded-2xl bg-black/35 border border-white/10 px-4 py-2.5">
-                      Italia (demo)
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-white/50 mb-1">
-                      Data di creazione
-                    </div>
-                    <div className="rounded-2xl bg-black/35 border border-white/10 px-4 py-2.5">
-                      24 Nov 2025
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Abbonamento */}
-            <section className="rounded-3xl border border-white/12 bg-gradient-to-br from-black/85 via-black/75 to-slate-950/85 px-6 py-5 shadow-[0_26px_80px_rgba(0,0,0,0.9)]">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold">Abbonamento</h2>
-                  <p className="text-xs text-white/60">
-                    Stato del tuo piano Cerbero.
-                  </p>
-                </div>
-                <span className="text-[11px] rounded-full bg-emerald-500/15 border border-emerald-400/60 px-3 py-1 text-emerald-300">
-                  Attivo
-                </span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="text-xs text-white/50">Piano corrente</div>
-                  <div className="mt-1 text-base font-semibold">
-                    Autopilot · 80€/mese
-                  </div>
-                  <p className="mt-1 text-xs text-white/60 max-w-md">
-                    Autotrading sempre attivo su smart contract 1-a-1. Puoi
-                    mettere in pausa l&apos;operatività dalla Dashboard o dal
-                    Wallet.
-                  </p>
-                </div>
-
-                <div className="flex flex-col items-stretch gap-2 text-xs">
-                  <button className="rounded-2xl bg-white text-[#020617] font-semibold px-4 py-2 hover:opacity-90 transition">
-                    Gestisci fatturazione (prossimamente)
-                  </button>
-                  <button className="rounded-2xl border border-white/30 px-4 py-2 text-white/80 hover:bg-white/5 transition">
-                    Metti in pausa l&apos;abbonamento
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white/80">
+                  <span className="truncate">
+                    {isLoadingMe ? 'Caricamento…' : email || '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(email, 'Email')}
+                    disabled={!email}
+                    className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-white/70 hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    Copia
                   </button>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-white/60">
-                <span className="rounded-full bg-white/5 border border-white/15 px-3 py-1">
-                  Rinnovo mensile automatico
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-white/45">
+                  Wallet (Arbitrum One)
                 </span>
-                <span className="rounded-full bg-white/5 border border-white/15 px-3 py-1">
-                  Nessun vincolo annuale
-                </span>
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white/80">
+                  <span className="font-mono text-[11px]">
+                    {isLoadingMe ? 'Caricamento…' : formatAddress(wallet)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(wallet, 'Indirizzo wallet')}
+                    disabled={!wallet}
+                    className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-white/70 hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    Copia
+                  </button>
+                </div>
               </div>
-            </section>
-          </div>
-
-          {/* Colonna destra: sicurezza */}
-          <section className="rounded-3xl border border-white/12 bg-white/8 px-6 py-5 shadow-[0_26px_80px_rgba(0,0,0,0.85)]">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-sm font-semibold">Sicurezza accesso</h2>
-                <p className="text-xs text-white/60">
-                  Login senza password tramite Magic Link.
-                </p>
-              </div>
-              <span className="text-[11px] rounded-full bg-sky-500/15 border border-sky-400/60 px-3 py-1 text-sky-300">
-                Magic Link
-              </span>
             </div>
 
-            <div className="space-y-4 text-xs text-white/70">
-              <div className="rounded-2xl bg-black/35 border border-white/12 px-4 py-3">
-                <div className="text-[11px] text-white/50 mb-1">
-                  Email principale
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>nome@esempio.com</span>
-                  <button className="text-[11px] underline hover:text-white">
-                    Modifica (prossimamente)
-                  </button>
+            <p className="mt-3 text-[11px] text-white/50">
+              Puoi usare questo indirizzo in qualsiasi wallet compatibile con
+              Arbitrum One per visualizzare e gestire i tuoi fondi anche al di
+              fuori di Cerbero.
+            </p>
+          </motion.div>
+
+          {/* CARD SICUREZZA / CHIAVE PRIVATA */}
+          <motion.div
+            variants={fadeInUp}
+            className="rounded-3xl border border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-slate-950 to-black/90 p-5 backdrop-blur-xl shadow-[0_0_35px_rgba(0,0,0,0.7)]"
+          >
+            <h2 className="text-sm font-semibold text-amber-100">
+              Sicurezza &amp; chiave privata
+            </h2>
+            <p className="mt-1 text-[11px] text-amber-100/80">
+              Questa sezione è dedicata al backup della tua chiave privata
+              Magic. Non condividere mai questa chiave con nessuno.
+            </p>
+
+            <div className="mt-4 rounded-2xl border border-amber-400/30 bg-black/60 px-3 py-3 text-xs text-white/80">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-amber-200/80">
+                  Chiave privata (Magic Wallet)
+                </span>
+                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-200">
+                  Coming soon
+                </span>
+              </div>
+
+              <p className="mb-2 text-[11px] text-white/65">
+                A breve, qui potrai visualizzare e copiare la tua chiave
+                privata. Ti guideremo passo passo nel salvarla in modo sicuro
+                (password manager, carta o hardware wallet).
+              </p>
+
+              <div className="mt-2 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-400/20 bg-black/70 px-3 py-2">
+                  <span className="font-mono text-[11px] text-amber-100/90">
+                    {isPkVisible
+                      ? maskedPk
+                      : '••••••••••••••••••••••••••••'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsPkVisible((v) => !v)}
+                      disabled={!privateKey}
+                      className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-amber-400/20 disabled:text-amber-200/60"
+                    >
+                      {isPkVisible ? 'Nascondi' : 'Mostra'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(privateKey, 'Chiave privata wallet')
+                      }
+                      disabled={!privateKey}
+                      className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[10px] text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-400"
+                    >
+                      Copia
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <ul className="space-y-2">
-                <li className="flex gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>
-                    Ogni accesso richiede un link univoco inviato alla tua
-                    email; nessuna password memorizzata.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>
-                    Puoi revocare le sessioni attive eliminando i token dal tuo
-                    dispositivo (logout) o contattando il supporto.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>
-                    In futuro potrai abilitare ulteriori livelli (es. conferma
-                    da app / 2FA) direttamente da questa pagina.
-                  </span>
+              <ul className="mt-3 space-y-1.5 text-[11px] text-amber-100/80">
+                <li>• Non salvare mai la chiave privata in chat o email.</li>
+                <li>• Preferisci un password manager o supporto fisico sicuro.</li>
+                <li>
+                  • Con la chiave privata puoi sempre recuperare il tuo wallet,
+                  anche senza Cerbero.
                 </li>
               </ul>
             </div>
-          </section>
-        </div>
-      </div>
-    </main>
+          </motion.div>
+        </motion.section>
+
+        {copyStatus && (
+          <div className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-xs text-white/80 backdrop-blur-xl">
+            {copyStatus}
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
