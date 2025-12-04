@@ -117,7 +117,13 @@ export async function POST(req: NextRequest) {
                 tenant.wallet ??
                 "";
 
-              await sendWelcomeEmail(email, walletAddress);
+              await sendWelcomeEmail({
+                to: email,
+                name: tenant.name || "Trader Cerbero",
+                walletAddress,
+                accountUrl: `${process.env.BASE_URL || "https://cerberoai.com"}/account`,
+              });
+
               console.log("[Stripe Webhook] Welcome email inviata a:", email);
             } catch (err) {
               console.error(

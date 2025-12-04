@@ -2,55 +2,122 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.EMAIL_FROM || "Cerbero AI <onboarding@resend.dev>";
+
+// Mittente delle email (puoi cambiarlo quando vuoi)
+const FROM_EMAIL =
+  process.env.EMAIL_FROM || "Cerbero AI <noreply@cerberoai.com>";
 
 /**
- * Invia la Welcome Email dopo la registrazione + pagamento Stripe.
- * userEmail = email del cliente (serve per spedire la mail)
- * walletAddress = indirizzo Arbitrum (lo mostriamo nella mail)
+ * Invia la Welcome Email dopo la registrazione/pagamento.
+ *
+ * Params:
+ * - to: email del cliente
+ * - name: nome del cliente (opzionale)
+ * - walletAddress: indirizzo del wallet Magic
+ * - accountUrl: link alla pagina /account del cliente
  */
-export async function sendWelcomeEmail(userEmail: string, walletAddress: string) {
+export async function sendWelcomeEmail(params: {
+  to: string;
+  name: string;
+  walletAddress?: string | null;
+  accountUrl: string;
+}) {
+  // Destrutturo i parametri
+  const { to, name, walletAddress, accountUrl } = params;
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
-      to: userEmail,
-      subject: "Benvenuto su Cerbero AI – Il tuo conto è pronto",
+      to,
+      subject: "Benvenuto in Cerbero AI – Il tuo conto è pronto",
       html: `
-        <div style="font-family:Arial, sans-serif;padding:20px;font-size:15px;line-height:1.6;color:#ffffff;background:#0a0a0a">
-          <h2 style="color:#7df9ff">Benvenuto in Cerbero AI</h2>
+  <!DOCTYPE html>
+  <html lang="it">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Benvenuto in Cerbero AI</title>
+    </head>
 
-          <p>Ciao,</p>
-          <p>Il tuo account Cerbero è stato creato con successo e il tuo wallet Arbitrum One è attivo.</p>
+    <body style="margin:0; padding:24px; background:#020617; font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif; color:#e5e7eb;">
 
-          <h3 style="color:#7df9ff;margin-top:25px">🔐 Il tuo wallet</h3>
-          <p><strong>Indirizzo:</strong> ${walletAddress}</p>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center">
 
-          <p>Per motivi di sicurezza, la <strong>chiave privata</strong> non viene mai inviata via email.  
-          Puoi recuperarla nella tua area personale:</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; background:#020617; border-radius:24px; border:1px solid rgba(148,163,184,0.25); box-shadow:0 30px 80px rgba(15,23,42,0.95); overflow:hidden;">
+              
+              <!-- BARRA COLORATA -->
+              <tr>
+                <td style="height:4px; background:linear-gradient(90deg,#22d3ee,#38bdf8,#6366f1);"></td>
+              </tr>
 
-          <p style="margin:20px 0">
-            <a href="https://cerberoai.com/account" 
-               style="background:#7df9ff;color:#000;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">
-              Vai al tuo Account
-            </a>
-          </p>
+              <!-- CONTENUTO -->
+              <tr>
+                <td style="padding:32px 28px 40px 28px;">
 
-          <p>All'interno troverai il pulsante:</p>
-          <p><strong>“Esporta la tua chiave privata (Magic Link)”</strong></p>
+                  <h1 style="margin:0; font-size:26px; font-weight:600; color:white;">
+                    Benvenuto in <span style="color:#38bdf8;">Cerbero AI</span>
+                  </h1>
 
-          <hr style="border:0;border-top:1px solid #333;margin:30px 0">
+                  <p style="margin-top:16px; font-size:15px; color:#cbd5e1; line-height:1.6;">
+                    Ciao <strong>${name}</strong>, il tuo conto è stato attivato con successo.
+                    Da questo momento, la tua <strong>Coscienza Finanziaria</strong> è pronta
+                    a lavorare 24/7 per far crescere il tuo capitale.
+                  </p>
 
-          <p>Se hai bisogno, il team Cerbero è sempre a disposizione.</p>
-          <p style="margin-top:25px;color:#888;font-size:12px">
-            © 2025 Cerbero AI – Autonomous Capital Engine
-          </p>
-        </div>
+                  ${
+                    walletAddress
+                      ? `
+                  <p style="margin-top:18px; font-size:14px; color:#94a3b8;">
+                    <strong>Wallet personale:</strong><br/>
+                    <span style="font-family:monospace; color:white;">
+                      ${walletAddress}
+                    </span>
+                  </p>
+                  `
+                      : ""
+                  }
+
+                  <p style="margin-top:24px; font-size:15px; line-height:1.7;">
+                    Per motivi di sicurezza, ti chiediamo di:
+                  </p>
+
+                  <ul style="color:#94a3b8; margin-top:10px; padding-left:18px; line-height:1.7; font-size:14px;">
+                    <li>Accedere alla tua area personale</li>
+                    <li>Esportare la tua <strong>chiave privata Magic</strong></li>
+                    <li>Conservarla in un posto sicuro</li>
+                  </ul>
+
+                  <!-- BOTTONE -->
+                  <div style="margin-top:32px; text-align:center;">
+                    <a href="${accountUrl}"
+                      style="background:#38bdf8; color:#0f172a; padding:14px 22px; border-radius:14px; font-size:15px; font-weight:600; text-decoration:none; display:inline-block;">
+                      Vai al tuo Account
+                    </a>
+                  </div>
+
+                  <p style="margin-top:32px; font-size:13px; color:#64748b;">
+                    Per qualsiasi necessità puoi contattarci a:<br/>
+                    <strong>support@cerberoai.com</strong>
+                  </p>
+
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+
+    </body>
+  </html>
       `,
     });
 
     return { ok: true };
-  } catch (err) {
-    console.error("Errore invio welcome email:", err);
+  } catch (error) {
+    console.error("Errore invio welcome email:", error);
     return { ok: false };
   }
 }
