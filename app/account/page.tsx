@@ -36,8 +36,6 @@ export default function AccountPage() {
   const [wallet, setWallet] = useState<string | null>(null);
   const [isLoadingMe, setIsLoadingMe] = useState(true);
 
-  const [privateKey, setPrivateKey] = useState<string | null>(null);
-  const [isPkVisible, setIsPkVisible] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,9 +64,6 @@ export default function AccountPage() {
 
         setEmail(data.email ?? null);
         setWallet(data.wallet ?? null);
-
-        // TODO: qui in futuro potrai caricare la chiave privata da un endpoint tipo /api/account/private-key
-        // setPrivateKey(data.privateKey);
       } catch (err) {
         console.error('[account] /api/me error:', err);
         if (typeof window !== 'undefined') {
@@ -95,11 +90,6 @@ export default function AccountPage() {
       setTimeout(() => setCopyStatus(null), 2000);
     }
   };
-
-  const maskedPk =
-    privateKey && privateKey.length > 16
-      ? `${privateKey.slice(0, 6)}···${privateKey.slice(-6)}`
-      : privateKey || 'Non ancora disponibile';
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
@@ -152,7 +142,8 @@ export default function AccountPage() {
               className="max-w-2xl text-sm leading-relaxed text-white/75"
             >
               Da questa pagina puoi verificare i tuoi dati, il tuo wallet su
-              Arbitrum One e, a breve, visualizzare la tua chiave privata Magic.
+              Arbitrum One e accedere al pannello Magic per esportare la tua
+              chiave privata.
               <span className="mt-1 block text-xs text-amber-300/95">
                 Importante: Cerbero non conserva mai la tua chiave privata. Sei
                 tu l&apos;unico proprietario del tuo wallet.
@@ -248,54 +239,41 @@ export default function AccountPage() {
               Sicurezza &amp; chiave privata
             </h2>
             <p className="mt-1 text-[11px] text-amber-100/80">
-              Questa sezione è dedicata al backup della tua chiave privata
-              Magic. Non condividere mai questa chiave con nessuno.
+              Qui trovi le istruzioni per esportare la tua chiave privata Magic
+              in modo sicuro. Cerbero non può vederla né recuperarla al posto
+              tuo.
             </p>
 
             <div className="mt-4 rounded-2xl border border-amber-400/30 bg-black/60 px-3 py-3 text-xs text-white/80">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-[11px] uppercase tracking-[0.16em] text-amber-200/80">
-                  Chiave privata (Magic Wallet)
+                  Esporta la tua chiave privata
                 </span>
                 <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-200">
-                  Coming soon
+                  Gestito da Magic
                 </span>
               </div>
 
               <p className="mb-2 text-[11px] text-white/65">
-                A breve, qui potrai visualizzare e copiare la tua chiave
-                privata. Ti guideremo passo passo nel salvarla in modo sicuro
-                (password manager, carta o hardware wallet).
+                Per esportare la tua chiave privata, apri il Magic Wallet
+                ufficiale. Usa la stessa email che utilizzi su Cerbero: riceverai
+                un codice via email e potrai visualizzare e salvare la tua frase
+                segreta.
               </p>
 
-              <div className="mt-2 flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-400/20 bg-black/70 px-3 py-2">
-                  <span className="font-mono text-[11px] text-amber-100/90">
-                    {isPkVisible
-                      ? maskedPk
-                      : '••••••••••••••••••••••••••••'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsPkVisible((v) => !v)}
-                      disabled={!privateKey}
-                      className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-[10px] text-amber-100 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-amber-400/20 disabled:text-amber-200/60"
-                    >
-                      {isPkVisible ? 'Nascondi' : 'Mostra'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopy(privateKey, 'Chiave privata wallet')
-                      }
-                      disabled={!privateKey}
-                      className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[10px] text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-400"
-                    >
-                      Copia
-                    </button>
-                  </div>
-                </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <a
+                  href="https://wallet.magic.link"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5 text-[11px] font-medium text-amber-100 hover:bg-amber-500/20"
+                >
+                  Apri Magic Wallet
+                </a>
+                <span className="text-[11px] text-amber-100/70">
+                  Suggerito: esporta e salva la chiave subito dopo la creazione
+                  del tuo account.
+                </span>
               </div>
 
               <ul className="mt-3 space-y-1.5 text-[11px] text-amber-100/80">
