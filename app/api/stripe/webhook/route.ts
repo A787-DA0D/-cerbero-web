@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import { db } from "@/lib/db";
+import { sendWelcomeEmail } from "@/lib/email";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY as string | undefined;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string | undefined;
@@ -107,6 +108,23 @@ export async function POST(req: NextRequest) {
             );
           } else {
             console.log("[Stripe Webhook] Tenant aggiornato OK:", tenant);
+
+            // Dopo aver aggiornato il tenant, inviamo la welcome email
+            try {
+              const walletAddress =
+                tenant.wallet_magic_address ??
+                tenant.wallet_address ??
+                tenant.wallet ??
+                "";
+
+              await sendWelcomeEmail(email, walletAddress);
+              console.log("[Stripe Webhook] Welcome email inviata a:", email);
+            } catch (err) {
+              console.error(
+                "[Stripe Webhook] Errore durante invio welcome email:",
+                err
+              );
+            }
           }
         } finally {
           client.release();
