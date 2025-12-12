@@ -1,8 +1,109 @@
 "use client";
 
+import React, { useMemo, useState } from "react";
 import Image from "next/image";
 
+function isValidEmailFormat(email: string) {
+  // semplice ma efficace: evita spazi, richiede @ e un punto dopo
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
 export default function SignupPage() {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailConfirm, setEmailConfirm] = useState("");
+  const [consent, setConsent] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const normalizedEmailConfirm = useMemo(
+    () => emailConfirm.trim().toLowerCase(),
+    [emailConfirm]
+  );
+
+  const canSubmit = useMemo(() => {
+    if (!fullName.trim()) return false;
+    if (!normalizedEmail) return false;
+    if (!normalizedEmailConfirm) return false;
+    if (!isValidEmailFormat(normalizedEmail)) return false;
+    if (normalizedEmail !== normalizedEmailConfirm) return false;
+    if (!consent) return false;
+    return true;
+  }, [fullName, normalizedEmail, normalizedEmailConfirm, consent]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setError(null);
+
+    const name = fullName.trim();
+    const e1 = normalizedEmail;
+    const e2 = normalizedEmailConfirm;
+
+    if (!name) {
+      setError("Inserisci nome e cognome.");
+      return;
+    }
+    if (!e1 || !isValidEmailFormat(e1)) {
+      setError("Controlla l’indirizzo email: non sembra valido.");
+      return;
+    }
+    if (e1 !== e2) {
+      setError("Le due email non coincidono. Ricontrolla e riprova.");
+      return;
+    }
+    if (!consent) {
+      setError("Devi accettare termini, privacy e rischi del servizio.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Step successivo: qui chiameremo /api/register (che poi porta a Stripe)
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email: e1,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        const msg =
+          data?.error === "EMAIL_INVALID"
+            ? "Controlla l’indirizzo email: non sembra valido."
+            : data?.error === "EMAIL_MISMATCH"
+            ? "Le due email non coincidono. Ricontrolla e riprova."
+            : data?.error === "MISSING_FIELDS"
+            ? "Compila tutti i campi richiesti."
+            : data?.error || "Errore di registrazione. Riprova tra poco.";
+        setError(msg);
+        return;
+      }
+
+      // Se /api/register ci dà un redirectUrl (Stripe Checkout), andiamo lì
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+
+      // fallback (non dovrebbe mai succedere)
+      setError("Errore: URL pagamento mancante. Riprova.");
+    } catch (err) {
+      console.error("[signup] submit error:", err);
+      setError("Errore di connessione. Controlla la rete e riprova.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-none text-white">
       {/* VIDEO DI SFONDO */}
@@ -60,10 +161,11 @@ export default function SignupPage() {
                   Crea il tuo account{" "}
                   <span className="text-emerald-300">Cerbero AI</span>
                 </h1>
+
                 <p className="mt-3 text-sm md:text-[15px] text-white/80 leading-relaxed max-w-xl">
                   In questa fase attivi direttamente{" "}
                   <span className="font-semibold text-emerald-300">
-                    Autopilot 100€/mese
+                    Autopilot 99€/mese
                   </span>
                   .
                   <br />
@@ -74,9 +176,14 @@ export default function SignupPage() {
                   Il capitale resta sempre{" "}
                   <span className="font-semibold">sotto il tuo controllo</span>.
                 </p>
+
+                <p className="mt-3 text-[11px] text-white/60">
+                  Consiglio: controlla bene l’email — è dove riceverai il link di
+                  accesso (Magic Link).
+                </p>
               </div>
 
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 {/* Nome e cognome */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-white/75">
@@ -84,8 +191,11 @@ export default function SignupPage() {
                   </label>
                   <input
                     type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     placeholder="Mario Rossi"
                     className="w-full rounded-2xl bg-black/40 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/70"
+                    autoComplete="name"
                   />
                 </div>
 
@@ -96,20 +206,26 @@ export default function SignupPage() {
                   </label>
                   <input
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="nome@esempio.com"
                     className="w-full rounded-2xl bg-black/40 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/70"
+                    autoComplete="email"
                   />
                 </div>
 
-                {/* Password */}
+                {/* Conferma Email */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-white/75">
-                    Crea una password
+                    Conferma email
                   </label>
                   <input
-                    type="password"
-                    placeholder="••••••••"
+                    type="email"
+                    value={emailConfirm}
+                    onChange={(e) => setEmailConfirm(e.target.value)}
+                    placeholder="ripeti l’email"
                     className="w-full rounded-2xl bg-black/40 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/70"
+                    autoComplete="email"
                   />
                 </div>
 
@@ -118,22 +234,32 @@ export default function SignupPage() {
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
+                      checked={consent}
+                      onChange={(e) => setConsent(e.target.checked)}
                       className="mt-0.5 h-3 w-3 rounded border-white/40 bg-black/60"
                     />
                     <span>
-                      Confermo di aver letto e accettato termini, privacy e
-                      rischi del servizio. Capisco che il trading comporta
-                      possibilità di perdita del capitale.
+                      Confermo di aver letto e accettato termini, privacy e rischi
+                      del servizio. Capisco che il trading comporta possibilità
+                      di perdita del capitale.
                     </span>
                   </label>
                 </div>
 
+                {/* Error box */}
+                {error && (
+                  <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-[12px] text-red-200">
+                    {error}
+                  </div>
+                )}
+
                 {/* CTA */}
                 <button
                   type="submit"
-                  className="mt-2 w-full rounded-2xl bg-white text-slate-950 text-sm font-semibold py-3 shadow-[0_18px_60px_rgba(15,23,42,0.95)] hover:bg-slate-100 transition"
+                  disabled={!canSubmit || isSubmitting}
+                  className="mt-2 w-full rounded-2xl bg-white text-slate-950 text-sm font-semibold py-3 shadow-[0_18px_60px_rgba(15,23,42,0.95)] hover:bg-slate-100 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Crea account e continua
+                  {isSubmitting ? "Reindirizzamento al pagamento..." : "Crea account e continua"}
                 </button>
 
                 <div className="text-[11px] text-white/60 text-center pt-2">

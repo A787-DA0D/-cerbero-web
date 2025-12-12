@@ -1,89 +1,91 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+/**
+ * Ritorna gli ultimi movimenti per un tenant:
+ * - DEPOSIT / WITHDRAW (Transak, manuali, ecc.)
+ * - TRADE_PNL (profitti/perdite delle operazioni)
+ *
+ * Identificazione tenant:
+ *  - ?email=...
+ *  - oppure ?walletMagic=...
+ */
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+
+  const email = searchParams.get("email");
+  const walletMagic = searchParams.get("walletMagic");
+
+  if (!email && !walletMagic) {
+    return NextResponse.json(
+      { ok: false, error: "MISSING_IDENTIFIER" },
+      { status: 400 }
+    );
+  }
+
+  const client = await db.connect();
+
   try {
-    const { searchParams } = new URL(req.url);
+    // 1) Troviamo il tenant_id
+    let tenantId: string | null = null;
 
-    const email = searchParams.get("email");
-    const walletMagic = searchParams.get("walletMagic");
-    const limitParam = searchParams.get("limit");
-    const limit = Math.min(Number(limitParam) || 20, 100); // max 100
-
-    if (!email && !walletMagic) {
-      return NextResponse.json(
-        { ok: false, error: "Provide at least email or walletMagic as query param" },
-        { status: 400 }
+    if (email) {
+      const resTenant = await client.query(
+        `SELECT id FROM tenants WHERE email = $1 LIMIT 1`,
+        [email]
       );
+      tenantId = resTenant.rows[0]?.id ?? null;
+    } else if (walletMagic) {
+      // Se hai una tabella che collega wallet → tenant, aggiungi qui il join.
+      // Per ora assumiamo che walletMagic sia salvato come email fittizia,
+      // quindi riusiamo la logica di sopra se necessario.
+      const resTenant = await client.query(
+        `SELECT id FROM tenants WHERE email = $1 LIMIT 1`,
+        [walletMagic]
+      );
+      tenantId = resTenant.rows[0]?.id ?? null;
     }
 
-    const query = `
+    if (!tenantId) {
+      return NextResponse.json({ ok: true, movements: [] }, { status: 200 });
+    }
+
+    // 2) Leggiamo TUTTI i tipi di movimenti per quel tenant,
+    //    inclusi TRADE_PNL.
+    const resMov = await client.query(
+      `
       SELECT
-        tm.id,
-        tm.type,
-        tm.amount_usdc,
-        tm.chain,
-        tm.source,
-        tm.tx_hash,
-        tm.external_ref,
-        tm.created_at
-      FROM tenant_movements tm
-      JOIN tenants t ON tm.tenant_id = t.id
-      WHERE
-        ($1::text IS NOT NULL AND t.email = $1)
-        OR
-        ($2::text IS NOT NULL AND t.wallet_magic = $2)
-      ORDER BY tm.created_at DESC
-      LIMIT $3;
-    `;
-
-    const values = [email, walletMagic, limit];
-
-    const result = await db.query(query, values);
-
-    // Mappiamo in un formato comodo per il frontend wallet
-    const movements = result.rows.map((row: any) => {
-      const amountNumber = Number(row.amount_usdc) || 0;
-      const isPositive = amountNumber >= 0;
-      const signedAmount = `${isPositive ? "+" : ""}${amountNumber.toFixed(2)} USDC`;
-
-      // Dettaglio testuale in base a tipo / source
-      let detail = "Movimento saldo";
-      if (row.type === "deposit" && row.source === "transak") {
-        detail = "Deposito via Transak";
-      } else if (row.type === "withdraw") {
-        detail = "Prelievo";
-      } else if (row.type === "profit") {
-        detail = "Profitto strategia";
-      }
-
-      return {
-        id: row.id,
-        type: row.type, // es. 'deposit'
-        labelType: row.type === "deposit"
-          ? "Deposito"
-          : row.type === "withdraw"
-          ? "Prelievo"
-          : row.type === "profit"
-          ? "Profitto"
-          : row.type,
+        id,
+        tenant_id,
+        label_type,
+        type,
         detail,
-        chain: row.chain || "arbitrum_one",
-        amount: signedAmount,
-        rawAmount: amountNumber,
-        source: row.source,
-        txHash: row.tx_hash,
-        externalRef: row.external_ref,
-        createdAt: row.created_at, // ISO
-      };
-    });
+        chain,
+        amount,
+        raw_amount,
+        created_at
+      FROM movements
+      WHERE tenant_id = $1
+      ORDER BY created_at DESC
+      LIMIT 20
+      `,
+      [tenantId]
+    );
 
-    return NextResponse.json({ ok: true, movements });
-  } catch (err) {
-    console.error("[Tenant Movements] Error:", err);
     return NextResponse.json(
-      { ok: false, error: "DB error" },
+      {
+        ok: true,
+        movements: resMov.rows,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("[/api/tenant/movements] error:", err);
+    return NextResponse.json(
+      { ok: false, error: "INTERNAL_ERROR" },
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }
