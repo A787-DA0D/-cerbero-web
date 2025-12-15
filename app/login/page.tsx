@@ -43,6 +43,13 @@ export default function LoginPage() {
     // 4) Redirect alla dashboard
     window.location.href = "/dashboard";
   }
+  // ✅ Se hai già una sessione salvata, vai diretto in dashboard
+  useEffect(() => {
+    const t = localStorage.getItem("cerbero_session");
+    if (t) {
+      window.location.href = "/dashboard";
+    }
+  }, []);
 
   // ✅ AUTO-LOGIN quando rientri dal link Magic (magic_credential in query)
   useEffect(() => {
