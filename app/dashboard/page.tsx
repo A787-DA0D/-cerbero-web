@@ -134,11 +134,16 @@ export default function DashboardPage() {
       setIsLoadingBalance(true);
 
       try {
-        const params = new URLSearchParams();
-        if (userEmail) params.set('email', userEmail);
-        else if (userWallet) params.set('walletMagic', userWallet);
+        // JWT salvato in localStorage dal login (Magic)
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('cerbero_session')
+            : null;
 
-        const res = await fetch(`/api/tenant/summary?${params.toString()}`);
+        // Chiamata sicura: niente query email, l’API usa l’email dal JWT
+        const res = await fetch('/api/tenant/summary', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
 
         if (!res.ok) {
           console.error('[/api/tenant/summary] non ok:', res.status);
@@ -172,7 +177,6 @@ export default function DashboardPage() {
         if (typeof data.autopilotEnabled === 'boolean') {
           setIsAutotradingOn(data.autopilotEnabled);
         } else {
-          // fallback: lo consideriamo attivo per ora
           setIsAutotradingOn(true);
         }
       } catch (err) {
