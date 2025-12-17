@@ -22,8 +22,9 @@ async function fetchOnchainBalance(email: string) {
     process.env.INTERNAL_API_KEY ||
     "";
 
-  // ✅ PATH DEFINITO UNA SOLA VOLTA
-  const url = `${base.replace(/\/$/, "")}/v1/account/balance?user_id=${encodeURIComponent(email)}`;
+  const url = `${base.replace(/\/$/, "")}/v1/account/balance?user_id=${encodeURIComponent(
+    email
+  )}`;
 
   const res = await fetch(url, {
     method: "GET",
@@ -54,9 +55,25 @@ async function fetchOnchainBalance(email: string) {
   return n;
 }
 
+async function fetchTradingAddress(email: string) {
+  const res = await db.query(
+    `
+    SELECT c.arbitrum_address
+    FROM contracts c
+    JOIN tenants t ON t.id = c.tenant_id
+    WHERE t.email = $1
+    ORDER BY c.created_at DESC NULLS LAST
+    LIMIT 1;
+    `,
+    [email]
+  );
+
+  const addr = res.rowCount ? (res.rows[0].arbitrum_address as string | null) : null;
+  return addr?.trim() || null;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    // ✅ SICUREZZA: serve JWT
     const JWT_SECRET = process.env.JWT_SECRET;
     if (!JWT_SECRET) {
       return NextResponse.json(
@@ -82,18 +99,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // (facoltativo) se vuoi ancora supportare query param, deve matchare la sessione
     const { searchParams } = new URL(req.url);
     const emailParam = (searchParams.get("email") || "").toLowerCase().trim();
     if (emailParam && emailParam !== sessionEmail) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    // 1) Leggi saldo on-chain dal Coordinator (source of truth)
-    const onchain = await fetchOnchainBalance(sessionEmail);
+    // in parallelo: address da DB + saldo da Coordinator
+    const [tradingAddress, onchain] = await Promise.all([
+      fetchTradingAddress(sessionEmail),
+      fetchOnchainBalance(sessionEmail),
+    ]);
 
-    // 2) Se Coordinator non risponde, fallback DB (non ideale, ma evita down totale UI)
     if (onchain === null) {
+      // fallback DB (solo per non rompere UI)
       const res = await db.query(
         `SELECT balance_usdc FROM tenants WHERE email = $1 LIMIT 1;`,
         [sessionEmail]
@@ -102,10 +121,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Tenant not found" }, { status: 404 });
       }
       const balanceUSDC = Number(res.rows[0].balance_usdc) || 0;
-      return NextResponse.json({ ok: true, balanceUSDC, source: "db_fallback" });
+      return NextResponse.json({
+        ok: true,
+        balanceUSDC,
+        tradingAddress,
+        source: "db_fallback",
+      });
     }
 
-    // 3) Aggiorna cache DB
+    // aggiorna cache DB con saldo letto da Coordinator (source of truth)
     await db.query(
       `
       UPDATE tenants
@@ -116,7 +140,12 @@ export async function GET(req: NextRequest) {
       [onchain, sessionEmail]
     );
 
-    return NextResponse.json({ ok: true, balanceUSDC: onchain, source: "coordinator_onchain" });
+    return NextResponse.json({
+      ok: true,
+      balanceUSDC: onchain,
+      tradingAddress,
+      source: "coordinator_onchain",
+    });
   } catch (err) {
     console.error("[Tenant Summary] Error:", err);
     return NextResponse.json({ ok: false, error: "DB error" }, { status: 500 });
