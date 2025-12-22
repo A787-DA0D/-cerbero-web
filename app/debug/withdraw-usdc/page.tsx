@@ -9,7 +9,7 @@ const CHAIN_ID = 42161; // Arbitrum One
 const DEFAULT_RPC =
   process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
   process.env.NEXT_PUBLIC_RPC_URL ||
-  "https://arb1.arbitrum.io/rpc";
+  "https://rpc.ankr.com/arbitrum";
 
 // >>> METTI QUI I TUOI VALORI (li hai già)
 const TA = "0xA1c636c5f49d0b6A900Cd7b63c0B54ec7649F12e";
