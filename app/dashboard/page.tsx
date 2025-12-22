@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -64,10 +64,7 @@ const CHAIN_ID = 42161;
 const USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 const USDC_DECIMALS = 6;
 
-const TA_ABI = [
-  'function owner()(address)',
-  'function nonces(address)(uint256)',
-];
+const TA_ABI = ['function owner()(address)', 'function nonces(address)(uint256)'];
 
 function toUSDCBaseUnits(value: string) {
   try {
@@ -87,22 +84,29 @@ function getMagicArbitrum() {
 }
 
 export default function DashboardPage() {
-  
-  // === Auth helper (Bearer token) ===
-  function authHeaders() {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("cerbero_session")
-        : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  // === Session helpers (NO token globale) ===
+  function getSessionToken() {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('cerbero_session');
   }
 
-// ======================
+  function authHeaders(): HeadersInit {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('cerbero_session')
+        : null;
+
+    const h: Record<string, string> = {};
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+  }
+
+  // ======================
   // STATE SESSIONE & DATI
   // ======================
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userWallet, setUserWallet] = useState<string | null>(null); // EOA Magic (solo “identità”)
-  const [tradingAddress, setTradingAddress] = useState<string | null>(null); // TA (wallet reale fondi)
+  const [userWallet, setUserWallet] = useState<string | null>(null); // EOA Magic (solo identità)
+  const [tradingAddress, setTradingAddress] = useState<string | null>(null); // TA (wallet fondi)
 
   const [balanceUSDC, setBalanceUSDC] = useState<number | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
@@ -137,29 +141,23 @@ export default function DashboardPage() {
   // ======================
   useEffect(() => {
     const loadMe = async () => {
-      const token =
-        typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
-
+      const token = getSessionToken();
       if (!token) {
         if (typeof window !== 'undefined') window.location.href = '/login';
         return;
       }
 
       try {
-        const res = await fetch('/api/me', {
-          method: 'GET',
-          headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}), Authorization: `Bearer ${token}` },
-        });
-
-        const data = await res.json();
+        const res = await fetch('/api/me', { method: 'GET', headers: { ...authHeaders() } });
+        const data = await res.json().catch(() => null);
 
         if (!res.ok || !data?.ok) throw new Error('invalid session');
 
         setUserEmail(data.email ?? null);
         setUserWallet(data.wallet ?? null);
+
+        // Se l'API già ti manda tradingAddress la prendiamo (fallback non rompe)
+        if (data.tradingAddress) setTradingAddress(data.tradingAddress);
       } catch (err) {
         console.error('[dashboard] /api/me error:', err);
         if (typeof window !== 'undefined') {
@@ -170,79 +168,11 @@ export default function DashboardPage() {
     };
 
     loadMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-// ======================
-// EFFECT: /api/tenant/movements  (AUTH)
-// ======================
-useEffect(() => {
-  const loadMovements = async () => {
-    if (!userEmail && !userWallet) return;
-
-    setIsLoadingMovements(true);
-
-    try {
-      const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('cerbero_session')
-          : null;
-
-      const res = await fetch('/api/tenant/movements', {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
-
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (!res.ok) {
-        console.error('[/api/tenant/movements] non ok:', res.status);
-        setIsLoadingMovements(false);
-        return;
-      }
-
-      const data = await res.json();
-      if (!data?.ok) {
-        console.error('[/api/tenant/movements] risposta ko:', data);
-        setIsLoadingMovements(false);
-        return;
-      }
-
-      const rows: MovementRow[] = (data.movements || []).map((m: any) => {
-        const createdAt = m.createdAt ? new Date(m.createdAt) : null;
-        const dateStr = createdAt
-          ? createdAt.toLocaleString('it-IT', {
-              day: '2-digit',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
-
-        const isPositive = (m.rawAmount ?? 0) >= 0;
-
-        return {
-          id: m.id,
-          date: dateStr,
-          type: m.labelType || m.type || 'Movimento',
-          detail: m.detail || 'Movimento saldo',
-          chain: m.chain === 'arbitrum_one' ? 'Arbitrum' : m.chain || 'Arbitrum',
-          amount: m.amount,
-          isPositive,
-        };
-      });
-
-      setMovements(rows);
-    } catch (err) {
-      console.error('[/api/tenant/movements] errore fetch:', err);
-    } finally {
-      setIsLoadingMovements(false);
-    }
-  };
-
-  loadMovements();
-}, [userEmail, userWallet]);
-
   // ======================
-  // EFFECT: /api/tenant/movements
+  // EFFECT: /api/tenant/movements  (AUTH)  [UNICO]
   // ======================
   useEffect(() => {
     const loadMovements = async () => {
@@ -251,14 +181,9 @@ useEffect(() => {
       setIsLoadingMovements(true);
 
       try {
-        // Manteniamo compatibilità con la route attuale: usa email o walletMagic
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('cerbero_session')
-            : null;
-
         const res = await fetch('/api/tenant/movements', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          method: 'GET',
+          headers: { ...authHeaders() },
         });
 
         if (!res.ok) {
@@ -266,7 +191,7 @@ useEffect(() => {
           return;
         }
 
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
         if (!data?.ok) {
           console.error('[/api/tenant/movements] risposta ko:', data);
           return;
@@ -283,20 +208,30 @@ useEffect(() => {
               })
             : '';
 
-          const isPositive = (m.rawAmount ?? 0) >= 0;
+          const raw = Number(m.amountUSDC ?? m.rawAmount ?? 0);
+          const isPositive = raw >= 0;
 
           return {
             id: m.id,
             date: dateStr,
-            type: m.labelType || m.type || 'Movimento',
-            detail: m.detail || 'Movimento saldo',
+            type: m.labelType || m.label || m.type || 'Movimento',
+            detail: m.detail || m.metadata?.detail || 'Movimento saldo',
             chain: m.chain === 'arbitrum_one' ? 'Arbitrum' : m.chain || 'Arbitrum',
-            amount: m.amount,
+            amount: m.amount || `${raw.toFixed(2)} USDC`,
             isPositive,
+            txHash: m.txHash ?? m.tx_hash ?? null,
+            source: m.source ?? null,
           };
         });
 
         setMovements(rows);
+
+        // Se l'API include trading address / balance / autopilot, agganciali senza rompere
+        if (data.tradingAddress) setTradingAddress(data.tradingAddress);
+        if (typeof data.balanceUSDC === 'number') setBalanceUSDC(data.balanceUSDC);
+        if (typeof data.autotradingEnabled === 'boolean') setIsAutotradingOn(data.autotradingEnabled);
+        if (typeof data.pnlTodayPct === 'number') setPnlTodayPct(data.pnlTodayPct);
+        if (typeof data.pnlMonthPct === 'number') setPnlMonthPct(data.pnlMonthPct);
       } catch (err) {
         console.error('[/api/tenant/movements] errore fetch:', err);
       } finally {
@@ -305,6 +240,7 @@ useEffect(() => {
     };
 
     loadMovements();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, userWallet]);
 
   const displayBalanceUSDC = balanceUSDC !== null ? formatNumber(balanceUSDC, 2) : '—';
@@ -329,16 +265,15 @@ useEffect(() => {
 
     try {
       const res = await fetch('/api/autotrading/toggle', {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
-
         method: 'POST',
-        headers: {
-          ...authHeaders(), 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: userEmail, enabled: nextValue }),
       });
 
-      if (!res.ok) {
-        console.error('/api/autotrading/toggle non ok:', res.status);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        console.error('/api/autotrading/toggle non ok:', res.status, data);
         setAutotradingMessage('Non riesco a cambiare lo stato ora. Riprova tra qualche istante.');
         return;
       }
@@ -443,19 +378,9 @@ useEffect(() => {
 
       setWithdrawStatus('Invio al relayer...');
 
-      const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('cerbero_session')
-          : null;
-
       const resp = await fetch('/api/withdraw', {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
-
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { ...authHeaders(), 'content-type': 'application/json' },
         body: JSON.stringify({
           to,
           amount: amountBase.toString(),
@@ -471,12 +396,9 @@ useEffect(() => {
         return;
       }
 
-      setWithdrawTxHash(data.txHash);
+      setWithdrawTxHash(data.txHash || null);
       setWithdrawStatus('✅ Prelievo inviato correttamente.');
-
-      // reset campi
       setWithdrawAmount('');
-      // non resetto "to" così se vuoi ripetere è più comodo
     } catch (e: any) {
       setWithdrawStatus(e?.message || 'Errore inatteso.');
     } finally {
@@ -487,7 +409,6 @@ useEffect(() => {
   // ======================
   // Activity feed: SOLO dati reali
   // ======================
-  // Mostriamo il feed SOLO quando c'è almeno una tx on-chain reale
   const hasRealTx = movements.some((m) => {
     const h = (m.txHash || '').toString();
     return h.startsWith('0x') && h.length >= 20;
@@ -495,7 +416,6 @@ useEffect(() => {
 
   const realMovements = movements.filter((m) => {
     const h = (m.txHash || '').toString();
-    // Consideriamo 'reale' se ha un tx hash plausibile
     return h.startsWith('0x') && h.length >= 20;
   });
 
@@ -559,9 +479,7 @@ useEffect(() => {
               />
             </div>
             <div className="flex flex-col leading-tight">
-              <span className="text-[11px] uppercase tracking-[0.2em] text-white/40">
-                Cerbero Dashboard
-              </span>
+              <span className="text-[11px] uppercase tracking-[0.2em] text-white/40">Cerbero Dashboard</span>
               <span className="text-sm font-semibold">
                 La tua{' '}
                 <span className="bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
@@ -572,13 +490,8 @@ useEffect(() => {
             </div>
           </motion.div>
 
-          <motion.div
-            variants={fadeInUp}
-            className="flex flex-wrap items-center gap-3 text-[11px] text-white/60"
-          >
-            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">
-              Data driven since 2020
-            </span>
+          <motion.div variants={fadeInUp} className="flex flex-wrap items-center gap-3 text-[11px] text-white/60">
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Data driven since 2020</span>
             <span
               className={`rounded-full border px-3 py-1 ${
                 isAutotradingOn
@@ -623,9 +536,7 @@ useEffect(() => {
                     <span className="font-mono text-[10px] text-white/80">{tradingDisplay}</span>
                   </p>
 
-                  <p className="mt-1 text-[11px] text-white/55">
-                    Equivalente stimato: € {displayBalanceEUR}
-                  </p>
+                  <p className="mt-1 text-[11px] text-white/55">Equivalente stimato: € {displayBalanceEUR}</p>
                 </div>
                 <div className="flex flex-col items-end text-[11px] text-white/60">
                   <span>
@@ -663,16 +574,10 @@ useEffect(() => {
               <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/50 px-4 py-3">
                 <div className="flex flex-col">
                   <span className="text-xs text-white/60">Stato Autotrading</span>
-                  <span
-                    className={`text-sm font-semibold ${
-                      isAutotradingOn ? 'text-emerald-300' : 'text-amber-300'
-                    }`}
-                  >
+                  <span className={`text-sm font-semibold ${isAutotradingOn ? 'text-emerald-300' : 'text-amber-300'}`}>
                     {isAutotradingOn ? 'Cerbero è attivo' : 'Cerbero è disattivato'}
                   </span>
-                  {autotradingMessage && (
-                    <span className="mt-1 text-[11px] text-amber-300">{autotradingMessage}</span>
-                  )}
+                  {autotradingMessage && <span className="mt-1 text-[11px] text-amber-300">{autotradingMessage}</span>}
                 </div>
                 <button
                   type="button"
@@ -712,8 +617,7 @@ useEffect(() => {
                 ))}
               </div>
               <p className="mt-3 text-[11px] text-white/55">
-                Grafico illustrativo. Le percentuali giornaliere e mensili in alto usano i dati reali del tuo
-                wallet.
+                Grafico illustrativo. Le percentuali giornaliere e mensili in alto usano i dati reali del tuo wallet.
               </p>
             </motion.div>
           </div>
@@ -753,7 +657,6 @@ useEffect(() => {
                   >
                     {[...activityItems, ...activityItems].map((item, idx) => {
                       let valueColor = 'text-white';
-
                       if (item.intent === 'WITHDRAW') valueColor = 'text-cyan-300';
                       else if (item.intent === 'TRADE') valueColor = item.isPositive ? 'text-emerald-300' : 'text-red-400';
                       else if (item.intent === 'INFO') valueColor = 'text-sky-300';
@@ -811,10 +714,7 @@ useEffect(() => {
             <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950 p-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Deposita (USDC • Arbitrum)</h3>
-                <button
-                  className="text-xs text-white/70 hover:text-white"
-                  onClick={() => setIsDepositOpen(false)}
-                >
+                <button className="text-xs text-white/70 hover:text-white" onClick={() => setIsDepositOpen(false)}>
                   Chiudi
                 </button>
               </div>
@@ -828,15 +728,10 @@ useEffect(() => {
                 <div className="font-mono text-xs break-all">{tradingAddress || '—'}</div>
               </div>
 
-              <p className="mt-3 text-[11px] text-white/60">
-                Nota: invia solo USDC su Arbitrum One. (Poi aggiungiamo QR + copy migliore.)
-              </p>
+              <p className="mt-3 text-[11px] text-white/60">Nota: invia solo USDC su Arbitrum One.</p>
 
               <div className="mt-4 flex justify-end">
-                <button
-                  className="px-4 py-2 rounded-lg bg-emerald-600"
-                  onClick={() => setIsDepositOpen(false)}
-                >
+                <button className="px-4 py-2 rounded-lg bg-emerald-600" onClick={() => setIsDepositOpen(false)}>
                   Ok
                 </button>
               </div>
@@ -850,10 +745,7 @@ useEffect(() => {
             <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950 p-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Prelievo (USDC • Arbitrum)</h3>
-                <button
-                  className="text-xs text-white/70 hover:text-white"
-                  onClick={() => setIsWithdrawOpen(false)}
-                >
+                <button className="text-xs text-white/70 hover:text-white" onClick={() => setIsWithdrawOpen(false)}>
                   Chiudi
                 </button>
               </div>
@@ -883,15 +775,13 @@ useEffect(() => {
                 </button>
               </div>
 
-              {withdrawStatus && (
-                <div className="mt-3 text-xs text-white/85 whitespace-pre-wrap">{withdrawStatus}</div>
-              )}
+              {withdrawStatus && <div className="mt-3 text-xs text-white/85 whitespace-pre-wrap">{withdrawStatus}</div>}
               {withdrawTxHash && (
                 <div className="mt-2 text-[11px] text-white/70 font-mono break-all">tx: {withdrawTxHash}</div>
               )}
 
               <p className="mt-4 text-[11px] text-white/55">
-                Questo flusso è “bank-grade”: l’utente firma con Magic, il relayer paga gas, e i fondi escono dal Trading Account.
+                Flusso bank-grade: l’utente firma con Magic, il relayer paga gas, e i fondi escono dal Trading Account.
               </p>
             </div>
           </div>
