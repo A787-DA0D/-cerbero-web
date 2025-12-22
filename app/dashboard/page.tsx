@@ -80,7 +80,14 @@ function getMagicArbitrum() {
   const rpcUrl = process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL;
   if (!key) throw new Error('NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY mancante');
   if (!rpcUrl) throw new Error('NEXT_PUBLIC_ARBITRUM_RPC_URL mancante');
-  return new Magic(key, { network: { rpcUrl, chainId: CHAIN_ID } });
+  const m = new Magic(key, { network: { rpcUrl, chainId: CHAIN_ID } });
+
+  if (typeof window !== "undefined") {
+    (window as any).cerberoMagic = m;
+    (window as any).cerberoProvider = m.rpcProvider;
+  }
+
+  return m;
 }
 
 export default function DashboardPage() {
