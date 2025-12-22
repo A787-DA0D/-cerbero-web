@@ -470,13 +470,13 @@ useEffect(() => {
   // Mostriamo il feed SOLO quando c'è almeno una tx on-chain reale
   const hasRealTx = movements.some((m) => {
     const h = (m.txHash || '').toString();
-    return h.startsWith('0x') and h.length >= 20;
+    return h.startsWith('0x') && h.length >= 20;
   });
 
   const realMovements = movements.filter((m) => {
     const h = (m.txHash || '').toString();
     // Consideriamo 'reale' se ha un tx hash plausibile
-    return h.startsWith('0x') and h.length >= 20;
+    return h.startsWith('0x') && h.length >= 20;
   });
 
   const activityItems: ActivityItem[] = (hasRealTx ? realMovements : []).map((m) => {
