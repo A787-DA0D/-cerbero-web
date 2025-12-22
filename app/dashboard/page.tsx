@@ -171,6 +171,56 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+// ======================
+// EFFECT: /api/tenant/summary (saldo + trading addr + autopilot)
+// ======================
+useEffect(() => {
+  const loadSummary = async () => {
+    try {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cerbero_session")
+          : null;
+
+      if (!token) return;
+
+      const res = await fetch("/api/tenant/summary", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error("[dashboard] summary non ok:", res.status);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data?.ok) {
+        console.error("[dashboard] summary risposta KO:", data);
+        return;
+      }
+
+      if (typeof data.balanceUSDC === "number") {
+        setBalanceUSDC(data.balanceUSDC);
+      }
+
+      if (typeof data.tradingAddress === "string") {
+        setTradingAddress(data.tradingAddress);
+      }
+
+      if (typeof data.autopilotEnabled === "boolean") {
+        setIsAutotradingOn(data.autopilotEnabled);
+      }
+    } catch (err) {
+      console.error("[dashboard] loadSummary error:", err);
+    }
+  };
+
+  loadSummary();
+}, []);
+
   // ======================
   // EFFECT: /api/tenant/movements  (AUTH)  [UNICO]
   // ======================
