@@ -53,8 +53,8 @@ export default function WithdrawUSDCPage() {
     setStatus("Preparing signer...");
 
     // ethers v5
-    const provider = new ethers.providers.Web3Provider(magic.rpcProvider as any);
-    const signer = provider.getSigner();
+    const provider = new ethers.BrowserProvider(magic.rpcProvider as any);
+    const signer = await provider.getSigner();
 
     const ownerAddr = await signer.getAddress();
     setOwner(ownerAddr);
