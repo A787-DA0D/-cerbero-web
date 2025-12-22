@@ -30,8 +30,6 @@ type MovementRow = {
   chain: string;
   amount: string;
   isPositive: boolean;
-  txHash?: string | null;
-  source?: string | null;
 };
 
 type ActivityItem = {
@@ -467,19 +465,7 @@ useEffect(() => {
   // ======================
   // Activity feed: SOLO dati reali
   // ======================
-  // Mostriamo il feed SOLO quando c'è almeno una tx on-chain reale
-  const hasRealTx = movements.some((m) => {
-    const h = (m.txHash || '').toString();
-    return h.startsWith('0x') and h.length >= 20;
-  });
-
-  const realMovements = movements.filter((m) => {
-    const h = (m.txHash || '').toString();
-    // Consideriamo 'reale' se ha un tx hash plausibile
-    return h.startsWith('0x') and h.length >= 20;
-  });
-
-  const activityItems: ActivityItem[] = (hasRealTx ? realMovements : []).map((m) => {
+  const activityItems: ActivityItem[] = movements.map((m) => {
     const upType = (m.type || '').toUpperCase();
 
     let intent: ActivityItem['intent'] = 'TRADE';
@@ -590,7 +576,7 @@ useEffect(() => {
             >
               <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs text-white/60">Trading Account (Arbitrum One)</p>
+                  <p className="text-xs text-white/60">Wallet personale (Trading Account)</p>
                   <p className="mt-1 text-lg font-semibold">
                     Saldo:{' '}
                     <span className="bg-gradient-to-r from-[#00F0FF] to-[#BC13FE] bg-clip-text text-transparent">
@@ -721,7 +707,7 @@ useEffect(() => {
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
               <div className="relative h-52 overflow-hidden">
-                {!hasRealTx || activityItems.length === 0 ? (
+                {activityItems.length === 0 ? (
                   <div className="flex h-full items-center justify-center rounded-2xl bg-black/40 px-3 py-2 text-[11px] text-white/50">
                     Ancora nessun movimento. I tuoi depositi, prelievi e PnL appariranno qui in tempo reale.
                   </div>
