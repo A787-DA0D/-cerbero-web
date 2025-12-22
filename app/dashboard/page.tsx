@@ -376,7 +376,7 @@ useEffect(() => {
 
       const amountBase = toUSDCBaseUnits(withdrawAmount);
       const ZERO = BigInt(0);
-      if (amountBase <= ZERO) {
+      if (amountBase === null || amountBase <= ZERO) {
         setWithdrawStatus('Importo non valido.');
         return;
       }
