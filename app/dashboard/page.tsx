@@ -4,8 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { TransakModal } from '@/components/TransakModal';
-import { buildTransakUrl } from '@/lib/transak';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 18 },
@@ -55,6 +53,25 @@ function formatNumber(n: number, decimals = 2) {
   });
 }
 
+function isValidEthAddress(addr: string) {
+  return /^0x[a-fA-F0-9]{40}$/.test(addr);
+}
+
+function toUSDCBaseUnits(amountStr: string) {
+  // amountStr tipo "12.34" => 12340000 (6 decimali)
+  const cleaned = amountStr.replace(',', '.').trim();
+  if (!cleaned) return null;
+
+  const [i, d = ''] = cleaned.split('.');
+  if (!/^\d+$/.test(i || '0')) return null;
+  if (!/^\d*$/.test(d)) return null;
+
+  const dec = (d + '000000').slice(0, 6);
+  const base = BigInt(i || '0') * BigInt(1_000_000) + BigInt(dec || '0');
+  if (base <= BigInt(0)) return null;
+  return base.toString();
+}
+
 export default function DashboardPage() {
   // ======================
   // STATE SESSIONE & DATI
@@ -71,19 +88,24 @@ export default function DashboardPage() {
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [isLoadingMovements, setIsLoadingMovements] = useState(false);
 
-  // Transak
-  const [isTransakOpen, setIsTransakOpen] = useState(false);
-  const [transakMode, setTransakMode] = useState<'BUY' | 'SELL'>('BUY');
-
   // Autotrading
   const [isAutotradingOn, setIsAutotradingOn] = useState<boolean | null>(null);
   const [isTogglingAutotrading, setIsTogglingAutotrading] = useState(false);
-  const [autotradingMessage, setAutotradingMessage] = useState<string | null>(
-    null
-  );
+  const [autotradingMessage, setAutotradingMessage] = useState<string | null>(null);
 
   // Messaggio per deposito/prelievo bloccati
   const [fundsWarning, setFundsWarning] = useState<string | null>(null);
+
+  // UI: pannello deposito / modale prelievo
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+
+  // Withdraw form
+  const [withdrawTo, setWithdrawTo] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawStatus, setWithdrawStatus] = useState<string | null>(null);
+  const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // ======================
   // EFFECT: /api/me
@@ -127,171 +149,133 @@ export default function DashboardPage() {
   // ======================
   // EFFECT: /api/tenant/summary
   // ======================
-  useEffect(() => {
-    const loadBalance = async () => {
-      if (!userEmail && !userWallet) return;
+  const reloadSummary = async () => {
+    if (!userEmail && !userWallet) return;
 
-      setIsLoadingBalance(true);
+    setIsLoadingBalance(true);
 
-      try {
-        // JWT salvato in localStorage dal login (Magic)
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('cerbero_session')
-            : null;
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('cerbero_session')
+          : null;
 
-        // Chiamata sicura: niente query email, l’API usa l’email dal JWT
-        const res = await fetch('/api/tenant/summary', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+      const res = await fetch('/api/tenant/summary', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
 
-        if (!res.ok) {
-          console.error('[/api/tenant/summary] non ok:', res.status);
-          setIsLoadingBalance(false);
-          return;
-        }
-
-        const data = await res.json();
-        if (!data?.ok) {
-          console.error('[/api/tenant/summary] risposta ko:', data);
-          setIsLoadingBalance(false);
-          return;
-        }
-
-        setBalanceUSDC(Number(data.balanceUSDC) || 0);
-
-        // PnL (se il backend lo espone)
-        if (typeof data.pnlTodayPct === 'number') {
-          setPnlTodayPct(data.pnlTodayPct);
-        } else {
-          setPnlTodayPct(null);
-        }
-
-        if (typeof data.pnlMonthPct === 'number') {
-          setPnlMonthPct(data.pnlMonthPct);
-        } else {
-          setPnlMonthPct(null);
-        }
-
-        // Stato iniziale autotrading, se il backend lo espone
-        if (typeof data.autopilotEnabled === 'boolean') {
-          setIsAutotradingOn(data.autopilotEnabled);
-        } else {
-          setIsAutotradingOn(true);
-        }
-      } catch (err) {
-        console.error('[/api/tenant/summary] errore fetch:', err);
-      } finally {
-        setIsLoadingBalance(false);
+      if (!res.ok) {
+        console.error('[/api/tenant/summary] non ok:', res.status);
+        return;
       }
-    };
 
-    loadBalance();
+      const data = await res.json();
+      if (!data?.ok) {
+        console.error('[/api/tenant/summary] risposta ko:', data);
+        return;
+      }
+
+      setBalanceUSDC(Number(data.balanceUSDC) || 0);
+
+      if (typeof data.pnlTodayPct === 'number') setPnlTodayPct(data.pnlTodayPct);
+      else setPnlTodayPct(null);
+
+      if (typeof data.pnlMonthPct === 'number') setPnlMonthPct(data.pnlMonthPct);
+      else setPnlMonthPct(null);
+
+      if (typeof data.autopilotEnabled === 'boolean') setIsAutotradingOn(data.autopilotEnabled);
+      else setIsAutotradingOn(true);
+    } catch (err) {
+      console.error('[/api/tenant/summary] errore fetch:', err);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  useEffect(() => {
+    reloadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, userWallet]);
 
   // ======================
   // EFFECT: /api/tenant/movements
   // ======================
-  useEffect(() => {
-    const loadMovements = async () => {
-      if (!userEmail && !userWallet) return;
+  const reloadMovements = async () => {
+    if (!userEmail && !userWallet) return;
 
-      setIsLoadingMovements(true);
+    setIsLoadingMovements(true);
 
-      try {
-        const params = new URLSearchParams();
-        if (userEmail) params.set('email', userEmail);
-        else if (userWallet) params.set('walletMagic', userWallet);
+    try {
+      const params = new URLSearchParams();
+      if (userEmail) params.set('email', userEmail);
+      else if (userWallet) params.set('walletMagic', userWallet);
 
-        const res = await fetch(`/api/tenant/movements?${params.toString()}`);
+      const res = await fetch(`/api/tenant/movements?${params.toString()}`);
 
-        if (!res.ok) {
-          console.error('[/api/tenant/movements] non ok:', res.status);
-          setIsLoadingMovements(false);
-          return;
-        }
-
-        const data = await res.json();
-        if (!data?.ok) {
-          console.error('[/api/tenant/movements] risposta ko:', data);
-          setIsLoadingMovements(false);
-          return;
-        }
-
-        const rows: MovementRow[] = (data.movements || []).map((m: any) => {
-          const createdAt = m.createdAt ? new Date(m.createdAt) : null;
-          const dateStr = createdAt
-            ? createdAt.toLocaleString('it-IT', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-            : '';
-
-          const isPositive = (m.rawAmount ?? 0) >= 0;
-
-          return {
-            id: m.id,
-            date: dateStr,
-            type: m.labelType || m.type || 'Movimento',
-            detail: m.detail || 'Movimento saldo',
-            chain:
-              m.chain === 'arbitrum_one' ? 'Arbitrum' : m.chain || 'Arbitrum',
-            amount: m.amount,
-            isPositive,
-          };
-        });
-
-        setMovements(rows);
-      } catch (err) {
-        console.error('[/api/tenant/movements] errore fetch:', err);
-      } finally {
-        setIsLoadingMovements(false);
+      if (!res.ok) {
+        console.error('[/api/tenant/movements] non ok:', res.status);
+        return;
       }
-    };
 
-    loadMovements();
+      const data = await res.json();
+      if (!data?.ok) {
+        console.error('[/api/tenant/movements] risposta ko:', data);
+        return;
+      }
+
+      const rows: MovementRow[] = (data.movements || []).map((m: any) => {
+        const createdAt = m.createdAt ? new Date(m.createdAt) : null;
+        const dateStr = createdAt
+          ? createdAt.toLocaleString('it-IT', {
+              day: '2-digit',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '';
+
+        const isPositive = (m.rawAmount ?? 0) >= 0;
+
+        return {
+          id: m.id,
+          date: dateStr,
+          type: m.labelType || m.type || 'Movimento',
+          detail: m.detail || 'Movimento saldo',
+          chain: m.chain === 'arbitrum_one' ? 'Arbitrum' : m.chain || 'Arbitrum',
+          amount: m.amount,
+          isPositive,
+        };
+      });
+
+      setMovements(rows);
+    } catch (err) {
+      console.error('[/api/tenant/movements] errore fetch:', err);
+    } finally {
+      setIsLoadingMovements(false);
+    }
+  };
+
+  useEffect(() => {
+    reloadMovements();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, userWallet]);
 
-  // ======================
-  // Transak URL dinamico
-  // ======================
-  const transakUrl = useMemo(() => {
-    if (!userEmail || !userWallet) return null;
+  const isBusy = isLoadingBalance;
 
-    return buildTransakUrl({
-      email: userEmail,
-      walletAddress: userWallet,
-    });
-  }, [userEmail, userWallet, transakMode]);
+  const displayBalanceUSDC = balanceUSDC !== null ? formatNumber(balanceUSDC, 2) : '—';
+  const displayBalanceEUR = balanceUSDC !== null ? formatNumber(balanceUSDC, 2) : '—';
 
-  const isCaricaFondiDisabled = !transakUrl || isLoadingBalance;
-
-  const displayBalanceUSDC =
-    balanceUSDC !== null ? formatNumber(balanceUSDC, 2) : '—';
-
-  const displayBalanceEUR =
-    balanceUSDC !== null ? formatNumber(balanceUSDC, 2) : '—';
-
-  const displayPnlToday =
-    pnlTodayPct !== null ? `${pnlTodayPct.toFixed(2)}%` : '—';
-
-  const displayPnlMonth =
-    pnlMonthPct !== null ? `${pnlMonthPct.toFixed(2)}%` : '—';
+  const displayPnlToday = pnlTodayPct !== null ? `${pnlTodayPct.toFixed(2)}%` : '—';
+  const displayPnlMonth = pnlMonthPct !== null ? `${pnlMonthPct.toFixed(2)}%` : '—';
 
   // ======================
   // Autotrading toggle handler
   // ======================
   const handleToggleAutotrading = async () => {
-    // se non sappiamo ancora lo stato o stiamo già togglando, esci
     if (isAutotradingOn === null || isTogglingAutotrading) return;
 
-    // per come è fatta adesso la /api vogliamo l'email
     if (!userEmail) {
-      setAutotradingMessage(
-        'Sessione non valida: email mancante. Esegui di nuovo il login.'
-      );
+      setAutotradingMessage('Sessione non valida: email mancante. Esegui di nuovo il login.');
       return;
     }
 
@@ -304,26 +288,19 @@ export default function DashboardPage() {
       const res = await fetch('/api/autotrading/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userEmail,
-          enabled: nextValue,
-        }),
+        body: JSON.stringify({ email: userEmail, enabled: nextValue }),
       });
 
       if (!res.ok) {
         console.error('/api/autotrading/toggle non ok:', res.status);
-        setAutotradingMessage(
-          'Non riesco a cambiare lo stato ora. Riprova tra qualche istante.'
-        );
+        setAutotradingMessage('Non riesco a cambiare lo stato ora. Riprova tra qualche istante.');
         return;
       }
 
       setIsAutotradingOn(nextValue);
     } catch (err) {
       console.error('/api/autotrading/toggle errore:', err);
-      setAutotradingMessage(
-        'Errore di connessione. Controlla la rete e riprova.'
-      );
+      setAutotradingMessage('Errore di connessione. Controlla la rete e riprova.');
     } finally {
       setIsTogglingAutotrading(false);
     }
@@ -334,30 +311,98 @@ export default function DashboardPage() {
   // ======================
   const handleClickDeposita = () => {
     if (isAutotradingOn) {
-      setFundsWarning(
-        "Per depositare, disattiva prima l'autotrading usando l'interruttore."
-      );
+      setFundsWarning("Per depositare, disattiva prima l'autotrading usando l'interruttore.");
       setTimeout(() => setFundsWarning(null), 4000);
       return;
     }
-
-    if (isCaricaFondiDisabled) return;
-    setTransakMode('BUY');
-    setIsTransakOpen(true);
+    setIsDepositOpen(true);
   };
 
   const handleClickPreleva = () => {
     if (isAutotradingOn) {
-      setFundsWarning(
-        "Per prelevare, disattiva prima l'autotrading usando l'interruttore."
-      );
+      setFundsWarning("Per prelevare, disattiva prima l'autotrading usando l'interruttore.");
       setTimeout(() => setFundsWarning(null), 4000);
       return;
     }
 
-    if (isCaricaFondiDisabled) return;
-    setTransakMode('SELL');
-    setIsTransakOpen(true);
+    setWithdrawStatus(null);
+    setWithdrawTxHash(null);
+    setIsWithdrawOpen(true);
+  };
+
+  // ======================
+  // Withdraw submit
+  // ======================
+  const handleWithdrawSubmit = async () => {
+    setWithdrawTxHash(null);
+
+    const to = withdrawTo.trim();
+    if (!isValidEthAddress(to)) {
+      setWithdrawStatus('Inserisci un address valido (0x...).');
+      return;
+    }
+
+    const amountBase = toUSDCBaseUnits(withdrawAmount);
+    if (!amountBase) {
+      setWithdrawStatus('Inserisci un importo valido (es. 10 oppure 10.50).');
+      return;
+    }
+
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('cerbero_session')
+        : null;
+
+    if (!token) {
+      setWithdrawStatus('Sessione scaduta. Rifai il login.');
+      return;
+    }
+
+    setIsWithdrawing(true);
+    setWithdrawStatus('Invio richiesta di prelievo…');
+
+    try {
+      const resp = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          // fallback minimale (se server-side auth non legge Bearer)
+          ...(userEmail ? { 'x-user-email': userEmail } : {}),
+        },
+        body: JSON.stringify({
+          to,
+          amount: amountBase, // base units (6 decimali)
+        }),
+      });
+
+      const json = await resp.json().catch(() => ({}));
+
+      if (!resp.ok || !json?.ok) {
+        const code = json?.code;
+        if (code === 'INSUFFICIENT_BALANCE') {
+          setWithdrawStatus('Saldo insufficiente per completare il prelievo.');
+        } else if (code === 'INSUFFICIENT_FOR_FEES') {
+          setWithdrawStatus('Saldo insufficiente per coprire commissioni (buffer). Riduci l’importo.');
+        } else if (resp.status === 401) {
+          setWithdrawStatus('Non autenticato. Rifai il login.');
+        } else {
+          setWithdrawStatus(json?.error || 'Errore durante il prelievo.');
+        }
+        return;
+      }
+
+      setWithdrawTxHash(json.txHash || null);
+      setWithdrawStatus('Prelievo inviato correttamente ✅');
+
+      // refresh dati
+      await reloadSummary();
+      await reloadMovements();
+    } catch (e: any) {
+      setWithdrawStatus(e?.message || 'Errore di rete durante il prelievo.');
+    } finally {
+      setIsWithdrawing(false);
+    }
   };
 
   // ======================
@@ -367,11 +412,8 @@ export default function DashboardPage() {
     const upType = (m.type || '').toUpperCase();
 
     let intent: ActivityItem['intent'] = 'TRADE';
-    if (upType.includes('DEPOSIT') || upType.includes('DEPOSITO')) {
-      intent = 'DEPOSIT';
-    } else if (upType.includes('WITHDRAW') || upType.includes('PRELIEVO')) {
-      intent = 'WITHDRAW';
-    }
+    if (upType.includes('DEPOSIT') || upType.includes('DEPOSITO')) intent = 'DEPOSIT';
+    else if (upType.includes('WITHDRAW') || upType.includes('PRELIEVO')) intent = 'WITHDRAW';
 
     return {
       type: m.type || 'Movimento',
@@ -394,7 +436,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
-      {/* Background in stile Home */}
+      {/* Background */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-black" />
         <div className="absolute -top-40 -left-40 h-[420px] w-[420px] rounded-full bg-fuchsia-600/40 blur-3xl" />
@@ -405,7 +447,7 @@ export default function DashboardPage() {
       <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/0 to-black/85" />
 
       {/* CONTENUTO */}
-      <main className="relative z-10 mx-auto.flex max-w-6xl flex-col gap-8 px-4 py-10 lg:px-6 lg:py-14">
+      <main className="relative z-10 mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 lg:px-6 lg:py-14">
         {/* Header Dashboard */}
         <motion.section
           variants={sectionContainer}
@@ -423,7 +465,7 @@ export default function DashboardPage() {
                 className="object-contain drop-shadow-[0_0_22px_rgba(56,189,248,0.95)]"
               />
             </div>
-            <div className="flex flex-col.leading-tight">
+            <div className="flex flex-col leading-tight">
               <span className="text-[11px] uppercase tracking-[0.2em] text-white/40">
                 Cerbero Dashboard
               </span>
@@ -464,7 +506,7 @@ export default function DashboardPage() {
 
         {/* GRID PRINCIPALE */}
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          {/* Colonna sinistra: Wallet + Performance */}
+          {/* Colonna sinistra */}
           <div className="space-y-6">
             {/* Carta Wallet */}
             <motion.div
@@ -494,12 +536,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col items-end text-[11px] text-white/60">
                   <span>
-                    Oggi:{' '}
-                    <span className="text-emerald-300">{displayPnlToday}</span>
+                    Oggi: <span className="text-emerald-300">{displayPnlToday}</span>
                   </span>
                   <span>
-                    Mese:{' '}
-                    <span className="text-emerald-300">{displayPnlMonth}</span>
+                    Mese: <span className="text-emerald-300">{displayPnlMonth}</span>
                   </span>
                 </div>
               </div>
@@ -510,7 +550,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={handleClickDeposita}
                   className="inline-flex flex-1 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-100 shadow-[0_0_25px_rgba(16,185,129,0.45)] transition hover:border-emerald-300 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-400"
-                  disabled={isCaricaFondiDisabled}
+                  disabled={isBusy}
                 >
                   Deposita
                 </button>
@@ -518,24 +558,20 @@ export default function DashboardPage() {
                   type="button"
                   onClick={handleClickPreleva}
                   className="inline-flex flex-1 items-center justify-center rounded-full border border-white/15 bg-gradient-to-r from-sky-500/15 via-blue-500/20 to-fuchsia-500/20 px-4 py-2 text-sm font-medium text-white/85 transition hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-400"
-                  disabled={isCaricaFondiDisabled}
+                  disabled={isBusy}
                 >
                   Preleva
                 </button>
               </div>
 
               {fundsWarning && (
-                <p className="mb-3 text-[11px] text-amber-300">
-                  {fundsWarning}
-                </p>
+                <p className="mb-3 text-[11px] text-amber-300">{fundsWarning}</p>
               )}
 
               {/* Toggle Autotrading */}
               <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/50 px-4 py-3">
                 <div className="flex flex-col">
-                  <span className="text-xs text-white/60">
-                    Stato Autotrading
-                  </span>
+                  <span className="text-xs text-white/60">Stato Autotrading</span>
                   <span
                     className={`text-sm font-semibold ${
                       isAutotradingOn ? 'text-emerald-300' : 'text-amber-300'
@@ -544,9 +580,7 @@ export default function DashboardPage() {
                     {isAutotradingOn ? 'Cerbero è attivo' : 'Cerbero è disattivato'}
                   </span>
                   {autotradingMessage && (
-                    <span className="mt-1 text-[11px] text-amber-300">
-                      {autotradingMessage}
-                    </span>
+                    <span className="mt-1 text-[11px] text-amber-300">{autotradingMessage}</span>
                   )}
                 </div>
                 <button
@@ -564,12 +598,12 @@ export default function DashboardPage() {
               </div>
             </motion.div>
 
-            {/* Performance / PnL “sparkline” (ancora illustrativa) */}
+            {/* Performance */}
             <motion.div
               variants={fadeInUp}
               initial="hidden"
               animate="visible"
-              className="rounded-3xl border border-white/10 bg.white/5 p-5 backdrop-blur-xl"
+              className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl"
             >
               <div className="mb-3 flex items-center justify-between text-xs text-white/60">
                 <span>Andamento Performance</span>
@@ -578,26 +612,23 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="mt-2 flex h-24 items-end gap-1">
-                {[35, 40, 55, 48, 70, 65, 90, 82, 100, 88, 95, 110].map(
-                  (h, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-t-full bg-gradient-to-t from-emerald-500/30 via-emerald-300/70 to-emerald-200/90"
-                      style={{ height: `${h}%` }}
-                    />
-                  )
-                )}
+                {[35, 40, 55, 48, 70, 65, 90, 82, 100, 88, 95, 110].map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-t-full bg-gradient-to-t from-emerald-500/30 via-emerald-300/70 to-emerald-200/90"
+                    style={{ height: `${h}%` }}
+                  />
+                ))}
               </div>
               <p className="mt-3 text-[11px] text-white/55">
-                Grafico illustrativo. Le percentuali giornaliere e mensili in
-                alto usano i dati reali del tuo wallet.
+                Grafico illustrativo. Le percentuali giornaliere e mensili in alto usano i dati reali del tuo wallet.
               </p>
             </motion.div>
           </div>
 
-          {/* Colonna destra: Live feed + Info */}
+          {/* Colonna destra */}
           <div className="space-y-6">
-            {/* Live operations feed */}
+            {/* Activity Log */}
             <motion.div
               variants={fadeInUp}
               initial="hidden"
@@ -610,46 +641,29 @@ export default function DashboardPage() {
                   Activity Log • {isLoadingMovements ? 'Loading…' : 'Live'}
                 </span>
                 <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-emerald-100/80">
-                  {movements.length > 0
-                    ? 'Tenant data'
-                    : 'In attesa di movimenti'}
+                  {movements.length > 0 ? 'Tenant data' : 'In attesa di movimenti'}
                 </span>
               </div>
 
-              {/* Fade top/bottom */}
               <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-slate-950 via-slate-950/20 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
               <div className="relative h-52 overflow-hidden">
                 {activityItems.length === 0 ? (
                   <div className="flex h-full items-center justify-center rounded-2xl bg-black/40 px-3 py-2 text-[11px] text-white/50">
-                    Ancora nessun movimento. I tuoi depositi, prelievi e PnL
-                    appariranno qui in tempo reale.
+                    Ancora nessun movimento. I tuoi depositi, prelievi e PnL appariranno qui in tempo reale.
                   </div>
                 ) : (
                   <motion.div
                     className="flex flex-col gap-2"
                     animate={{ y: ['0%', '-50%'] }}
-                    transition={{
-                      duration: 22,
-                      repeat: Infinity,
-                      ease: 'linear',
-                    }}
+                    transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
                   >
                     {[...activityItems, ...activityItems].map((item, idx) => {
                       let valueColor = 'text-white';
-
-                      if (item.intent === 'DEPOSIT') {
-                        valueColor = 'text-white';
-                      } else if (item.intent === 'WITHDRAW') {
-                        valueColor = 'text-cyan-300';
-                      } else if (item.intent === 'TRADE') {
-                        valueColor = item.isPositive
-                          ? 'text-emerald-300'
-                          : 'text-red-400';
-                      } else if (item.intent === 'INFO') {
-                        valueColor = 'text-sky-300';
-                      }
+                      if (item.intent === 'WITHDRAW') valueColor = 'text-cyan-300';
+                      else if (item.intent === 'TRADE')
+                        valueColor = item.isPositive ? 'text-emerald-300' : 'text-red-400';
 
                       return (
                         <div
@@ -662,18 +676,12 @@ export default function DashboardPage() {
                               <span className="font-semibold text-white/85">
                                 {item.type.toUpperCase()} • {item.symbol}
                               </span>
-                              <span className="text-[10px] text-white/60">
-                                {item.action}
-                              </span>
+                              <span className="text-[10px] text-white/60">{item.action}</span>
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-0.5">
-                            <span className={`text-[11px] ${valueColor}`}>
-                              {item.value}
-                            </span>
-                            <span className="text-[9px] text-white/45">
-                              {item.time}
-                            </span>
+                            <span className={`text-[11px] ${valueColor}`}>{item.value}</span>
+                            <span className="text-[9px] text-white/45">{item.time}</span>
                           </div>
                         </div>
                       );
@@ -683,43 +691,124 @@ export default function DashboardPage() {
               </div>
             </motion.div>
 
-            {/* Box info “step successivi” */}
+            {/* Info box */}
             <motion.div
               variants={fadeInUp}
               initial="hidden"
               animate="visible"
               className="rounded-3xl border border-white/10 bg-slate-950/85 p-5 backdrop-blur-xl"
             >
-              <h2 className="text-sm font-semibold text-white/80">
-                Cosa potrai fare da qui
-              </h2>
+              <h2 className="text-sm font-semibold text-white/80">Azioni rapide</h2>
               <ul className="mt-3 space-y-2 text-sm text-white/70">
-                <li>• Collegare il tuo conto e attivare il widget di deposito.</li>
-                <li>• Accendere o spegnere Cerbero con un solo interruttore.</li>
-                <li>
-                  • Monitorare in tempo reale le operazioni della Coscienza.
-                </li>
-                <li>
-                  • Scaricare report e riepiloghi fiscali pronti all&apos;uso.
-                </li>
+                <li>• Deposita USDC su Arbitrum (tutorial guidato).</li>
+                <li>• Preleva USDC direttamente dal tuo conto Cerbero.</li>
+                <li>• Accendi/Spegni Autotrading con un interruttore.</li>
+                <li>• Monitoraggio live di movimenti e attività.</li>
               </ul>
               <p className="mt-3 text-[11px] text-white/50">
-                Questa è una preview grafica. Nel prossimo step collegheremo la
-                logica reale (Transak, Magic Link, Coordinator) mantenendo
-                esattamente questo design.
+                Prossimo step: rendiamo il prelievo “bank-grade” (fee preview reale e uscita da TA_V2 contract, non dal relayer).
               </p>
             </motion.div>
           </div>
         </section>
-
-        {/* MODAL TRANSAK */}
-        <TransakModal
-          isOpen={isTransakOpen}
-          onClose={() => setIsTransakOpen(false)}
-          transakUrl={transakUrl}
-          mode={transakMode}
-        />
       </main>
+
+      {/* MODALE DEPOSITO */}
+      {isDepositOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950/90 p-5 backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white/85">Come depositare USDC</h3>
+              <button
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                onClick={() => setIsDepositOpen(false)}
+              >
+                Chiudi
+              </button>
+            </div>
+
+            <div className="space-y-3 text-[12px] text-white/70">
+              <p>
+                1) Acquista o ottieni <b>USDC su Arbitrum One</b> (exchange o bridge).
+              </p>
+              <p>
+                2) Invia USDC al tuo <b>Trading Account</b> (gestito da Cerbero).
+              </p>
+              <p className="text-white/55">
+                Nota: nella prossima iterazione qui mettiamo un “deposit address” + copy button + QR.
+              </p>
+
+              <div className="mt-3 rounded-2xl border border-white/10 bg-black/40 p-3">
+                <p className="text-[11px] text-white/50">Wallet attuale:</p>
+                <p className="mt-1 font-mono text-[11px] text-white/80">{userWallet || '—'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE PRELIEVO */}
+      {isWithdrawOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950/90 p-5 backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white/85">Preleva USDC</h3>
+              <button
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                onClick={() => setIsWithdrawOpen(false)}
+                disabled={isWithdrawing}
+              >
+                Chiudi
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] text-white/60">Destinatario (address 0x…)</label>
+                <input
+                  value={withdrawTo}
+                  onChange={(e) => setWithdrawTo(e.target.value)}
+                  placeholder="0x..."
+                  className="mt-1 w-full rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-[12px] text-white/85 outline-none focus:border-white/25"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-white/60">Importo (USDC)</label>
+                <input
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="es. 10 oppure 10.50"
+                  className="mt-1 w-full rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-[12px] text-white/85 outline-none focus:border-white/25"
+                />
+                <p className="mt-1 text-[10px] text-white/45">
+                  Il prelievo verrà inviato su Arbitrum One.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleWithdrawSubmit}
+                disabled={isWithdrawing}
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-gradient-to-r from-sky-500/15 via-blue-500/20 to-fuchsia-500/20 px-4 py-2 text-sm font-medium text-white/85 transition hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-400"
+              >
+                {isWithdrawing ? 'Invio…' : 'Conferma prelievo'}
+              </button>
+
+              {withdrawStatus && (
+                <div className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-[11px] text-white/70">
+                  {withdrawStatus}
+                  {withdrawTxHash && (
+                    <div className="mt-1 font-mono text-[10px] text-white/60">
+                      tx: {withdrawTxHash}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
