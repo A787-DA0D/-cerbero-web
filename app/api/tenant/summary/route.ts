@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       SELECT
         id,
         autopilot_enabled,
-        trading_address,
+        smart_contract_address,
         balance_usdc
       FROM tenants
       WHERE email = $1
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     if (!row?.id) return jsonError(404, "Tenant not found");
 
     // normalizzazioni
-    const tradingAddress = (row.trading_address || null) as string | null;
+    const tradingAddress = (row.smart_contract_address || null) as string | null;
 
     // balance_usdc può essere numeric/string: normalizziamo a number
     let balanceUSDC: number | null = null;
