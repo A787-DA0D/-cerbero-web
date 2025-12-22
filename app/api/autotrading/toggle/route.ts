@@ -1,65 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getBearerSession } from "@/lib/bearer-session";
+
+function jsonError(status: number, message: string) {
+  return NextResponse.json({ ok: false, error: message }, { status });
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getBearerSession(req);
+    const email = session?.email || "";
+    if (!email) return jsonError(401, "Unauthorized");
+
     const body = await req.json().catch(() => null);
+    const enabled = !!body?.enabled;
 
-    const email = body?.email as string | undefined;
-    const enabled = body?.enabled as boolean | undefined;
+    // Protezione: non permettere toggle su email diversa dalla session (evita spoof)
+    const bodyEmail = (body?.email || "").toString().toLowerCase().trim();
+    if (bodyEmail && bodyEmail !== email) return jsonError(403, "Forbidden");
 
-    if (!email || typeof enabled !== "boolean") {
-      console.error("[autotrading/toggle] bad payload:", body);
-      return NextResponse.json(
-        { ok: false, error: "BAD_REQUEST" },
-        { status: 400 }
-      );
-    }
-
-    const client = await db.connect();
-
-    try {
-      const query = `
-        UPDATE tenants
-        SET autopilot_enabled = $1,
-            updated_at = NOW()
-        WHERE email = $2
-        RETURNING id, email, autopilot_enabled;
-      `;
-      const values = [enabled, email];
-
-      const result = await client.query(query, values);
-
-      if (result.rowCount === 0) {
-        console.error(
-          "[autotrading/toggle] tenant non trovato per email:",
-          email
-        );
-        return NextResponse.json(
-          { ok: false, error: "TENANT_NOT_FOUND" },
-          { status: 404 }
-        );
-      }
-
-      const tenant = result.rows[0];
-
-      console.log(
-        "[autotrading/toggle] autopilot aggiornato:",
-        tenant.id,
-        tenant.email,
-        "=>",
-        tenant.autopilot_enabled
-      );
-
-      return NextResponse.json({ ok: true, tenant }, { status: 200 });
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error("[autotrading/toggle] errore interno:", err);
-    return NextResponse.json(
-      { ok: false, error: "INTERNAL_ERROR" },
-      { status: 500 }
+    await db.query(
+      `UPDATE tenants SET autopilot_enabled = $1 WHERE email = $2`,
+      [enabled, email]
     );
+
+    return NextResponse.json({ ok: true, email, autopilot_enabled: enabled }, { status: 200 });
+  } catch (err: any) {
+    console.error("[/api/autotrading/toggle] error:", err);
+    return jsonError(500, "Server error");
   }
 }
