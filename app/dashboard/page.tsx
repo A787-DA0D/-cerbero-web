@@ -138,7 +138,10 @@ export default function DashboardPage() {
       try {
         const res = await fetch('/api/me', {
           method: 'GET',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}), Authorization: `Bearer ${token}` },
         });
 
         const data = await res.json();
@@ -175,6 +178,8 @@ useEffect(() => {
           : null;
 
       const res = await fetch('/api/tenant/movements', {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
+
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
@@ -314,6 +319,8 @@ useEffect(() => {
 
     try {
       const res = await fetch('/api/autotrading/toggle', {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: userEmail, enabled: nextValue }),
@@ -431,6 +438,8 @@ useEffect(() => {
           : null;
 
       const resp = await fetch('/api/withdraw', {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
+
         method: 'POST',
         headers: {
           'content-type': 'application/json',
