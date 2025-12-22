@@ -87,7 +87,17 @@ function getMagicArbitrum() {
 }
 
 export default function DashboardPage() {
-  // ======================
+  
+  // === Auth helper (Bearer token) ===
+  function authHeaders() {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("cerbero_session")
+        : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+// ======================
   // STATE SESSIONE & DATI
   // ======================
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -322,7 +332,8 @@ useEffect(() => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('cerbero_session') : null;
 
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: userEmail, enabled: nextValue }),
       });
 
