@@ -61,8 +61,8 @@ export default function WithdrawUSDCPage() {
 
     // read nonce from TA
     const taAbi = [
-      "function nonces(address)(uint256)",
-      "function owner()(address)",
+      "function nonces(address) view returns (uint256)",
+      "function owner() view returns (address)",
     ];
     const ta = new ethers.Contract(TA, taAbi, provider);
 
