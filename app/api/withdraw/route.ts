@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     // 4) Balance check (UX banca)
     // NB: amount arriva in "raw" (6 decimali) dal frontend. Quindi è già in base units.
     const amountBI = BigInt(amount);
-    if (amountBI <= 0n) return jsonError(400, "Importo non valido");
+    if (amountBI <= BigInt(0)) return jsonError(400, "Importo non valido");
 
     const bal: bigint = await usdc.balanceOf(TA_V2);
     if (bal < amountBI) {
