@@ -90,12 +90,6 @@ function getMagicArbitrum() {
   return m;
 }
 
-// Force Magic init on page mount (so window.cerberoProvider is always available)
-useEffect(() => {
-  try { getMagic(); } catch (e) { console.warn('Magic init failed', e); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
-
 export default function DashboardPage() {
   // === Session helpers (NO token globale) ===
   function getSessionToken() {
