@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { db } from "@/lib/db";
+import { isFounder } from "@/lib/founder";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -130,11 +131,14 @@ export async function POST(req: NextRequest) {
             });
             stripeCustomerId = created.id;
 
-            console.log("[Stripe Webhook] customer mancante in session → creato customer", {
-              email: customerEmail,
-              stripeCustomerId,
-              sessionId: session.id,
-            });
+            console.log(
+              "[Stripe Webhook] customer mancante in session → creato customer",
+              {
+                email: customerEmail,
+                stripeCustomerId,
+                sessionId: session.id,
+              }
+            );
           } catch (e) {
             console.warn("[Stripe Webhook] creazione customer fallita", e);
           }
@@ -224,6 +228,24 @@ export async function POST(req: NextRequest) {
         const customerEmail = invoice.customer_email || null;
 
         if (stripeCustomerId) {
+          // trova email dal DB così possiamo applicare whitelist founder
+          const tRes = await db.query(
+            `SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1;`,
+            [stripeCustomerId]
+          );
+          const email = (tRes.rowCount ? (tRes.rows[0].email as string) : "")
+            .toLowerCase()
+            .trim();
+
+          if (isFounder(email)) {
+            console.log("[Stripe Webhook] founder bypass: keep autopilot_enabled", {
+              email,
+              stripeCustomerId,
+              event: "invoice.payment_failed",
+            });
+            break;
+          }
+
           await db.query(
             `
             UPDATE tenants
@@ -278,6 +300,24 @@ export async function POST(req: NextRequest) {
         ];
 
         if (inactiveStatuses.includes(status)) {
+          // risolvi email tenant e applica whitelist founder
+          const tRes = await db.query(
+            `SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1;`,
+            [stripeCustomerId]
+          );
+          const email = (tRes.rowCount ? (tRes.rows[0].email as string) : "")
+            .toLowerCase()
+            .trim();
+
+          if (isFounder(email)) {
+            console.log("[Stripe Webhook] founder bypass: keep autopilot_enabled", {
+              email,
+              stripeCustomerId,
+              status,
+            });
+            break;
+          }
+
           await db.query(
             `
             UPDATE tenants
