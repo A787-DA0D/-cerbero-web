@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     if (!sig) return jsonError(400, "Firma mancante");
 
     const amountBI = BigInt(amountRaw);
-    if (amountBI <= 0n) return jsonError(400, "Importo non valido");
+    if (amountBI <= BigInt(0)) return jsonError(400, "Importo non valido");
 
     const deadlineBI = BigInt(deadlineRaw);
 
