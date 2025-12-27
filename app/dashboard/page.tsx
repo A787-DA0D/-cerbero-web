@@ -64,6 +64,17 @@ const CHAIN_ID = 42161;
 const USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 const USDC_DECIMALS = 6;
 
+const GNS_DIAMOND = '0xFF162c694eAA571f685030649814282eA457f169';
+
+const GNS_ABI = [
+  'function getTradingDelegate(address trader) view returns (address)',
+];
+
+const TA_SETUP_ABI = [
+  'function setTradingDelegate(address delegate) external',
+];
+
+
 const TA_ABI = ['function owner()(address)', 'function nonces(address)(uint256)'];
 
 function toUSDCBaseUnits(value: string) {
@@ -142,6 +153,12 @@ export default function DashboardPage() {
   const [withdrawStatus, setWithdrawStatus] = useState<string | null>(null);
   const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  // One-time setup: GNS delegate
+  const [delegateStatus, setDelegateStatus] = useState<string | null>(null);
+  const [isSettingDelegate, setIsSettingDelegate] = useState(false);
+  const [delegateAddress, setDelegateAddress] = useState<string | null>(null);
+
 
   // ======================
   // EFFECT: /api/me
@@ -227,6 +244,14 @@ useEffect(() => {
 
   loadSummary();
 }, []);
+
+
+  useEffect(() => {
+    if (!tradingAddress) return;
+    refreshDelegateStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tradingAddress]);
+
 
   // ======================
   // EFFECT: /api/tenant/movements  (AUTH)  [UNICO]
@@ -463,6 +488,53 @@ useEffect(() => {
     }
   };
 
+  const handleOneTimeDelegateSetup = async () => {
+    try {
+      setDelegateStatus(null);
+
+      if (!tradingAddress) {
+        setDelegateStatus('Trading Account non disponibile. Riprova tra poco.');
+        return;
+      }
+
+      setIsSettingDelegate(true);
+      setDelegateStatus('Controllo permessi su GNS...');
+
+      const magic = getMagicArbitrum();
+      const provider = new BrowserProvider(magic.rpcProvider as any);
+      const signer = await provider.getSigner();
+
+      const gns = new Contract(GNS_DIAMOND, GNS_ABI, provider);
+      const current: string = await gns.getTradingDelegate(tradingAddress);
+
+      setDelegateAddress(current);
+
+      // Se già self-delegate, ok
+      if (current && current.toLowerCase() === tradingAddress.toLowerCase()) {
+        setDelegateStatus('✅ Autotrading già abilitato (delegate ok).');
+        return;
+      }
+
+      setDelegateStatus('Firma richiesta: abilita Autotrading (one-time)…');
+
+      const ta = new Contract(tradingAddress, TA_SETUP_ABI, signer);
+      const tx = await ta.setTradingDelegate(tradingAddress);
+
+      setDelegateStatus(`Tx inviata: ${tx.hash}. Attendo conferma...`);
+
+      await tx.wait();
+
+      setDelegateStatus('✅ Abilitazione completata. Delegate aggiornato.');
+      await refreshDelegateStatus();
+    } catch (e: any) {
+      console.error('[delegate] setup error', e);
+      setDelegateStatus(e?.message || 'Errore inatteso durante il setup.');
+    } finally {
+      setIsSettingDelegate(false)
+    }
+  };
+
+
   // ======================
   // Activity feed: SOLO dati reali
   // ======================
@@ -503,6 +575,23 @@ useEffect(() => {
   });
 
   const tradingDisplay = tradingAddress ? formatAddress(tradingAddress) : '—';
+
+  const refreshDelegateStatus = async () => {
+    try {
+      if (!tradingAddress) return;
+
+      const magic = getMagicArbitrum();
+      const provider = new BrowserProvider(magic.rpcProvider as any);
+
+      const gns = new Contract(GNS_DIAMOND, GNS_ABI, provider);
+      const d: string = await gns.getTradingDelegate(tradingAddress);
+
+      setDelegateAddress(d);
+    } catch (e: any) {
+      console.error('[delegate] refresh error', e);
+    }
+  };
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
@@ -649,6 +738,32 @@ useEffect(() => {
                   />
                 </button>
               </div>
+              {/* ONE-TIME SETUP: GNS DELEGATE */}
+              <div className="mt-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-white/60">Setup Autotrading (one-time)</span>
+                    <span className="text-[11px] text-white/55">
+                      Delegate attuale:{' '}
+                      <span className="font-mono text-[10px] text-white/80">{formatAddress(delegateAddress)}</span>
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleOneTimeDelegateSetup}
+                    disabled={isSettingDelegate || !tradingAddress}
+                    className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15 disabled:opacity-60"
+                  >
+                    {isSettingDelegate ? 'In corso…' : 'Abilita'}
+                  </button>
+                </div>
+
+                {delegateStatus && (
+                  <p className="mt-2 text-[11px] text-amber-200 whitespace-pre-wrap">{delegateStatus}</p>
+                )}
+              </div>
+
             </motion.div>
 
             {/* PERFORMANCE CARD */}
@@ -802,7 +917,10 @@ useEffect(() => {
             <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950 p-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Prelievo (USDC • Arbitrum)</h3>
-                <button className="text-xs text-white/70 hover:text-white" onClick={() => setIsWithdrawOpen(false)}>
+                <button
+                  className="text-xs text-white/70 hover:text-white"
+                  onClick={() => setIsWithdrawOpen(false)}
+                >
                   Chiudi
                 </button>
               </div>
@@ -826,15 +944,18 @@ useEffect(() => {
                 <button
                   onClick={handleWithdraw}
                   disabled={isWithdrawing}
-                  className="px-4 py-2 rounded-lg bg-cyan-600 disabled:opacity-60"
+                  className="rounded-lg bg-cyan-600 px-4 py-2 disabled:opacity-60"
                 >
-                  {isWithdrawing ? 'Invio...' : 'Firma & Preleva'}
+                  {isWithdrawing ? "Invio..." : "Firma & Preleva"}
                 </button>
               </div>
 
-              {withdrawStatus && <div className="mt-3 text-xs text-white/85 whitespace-pre-wrap">{withdrawStatus}</div>}
+              {withdrawStatus && (
+                <div className="mt-3 whitespace-pre-wrap text-xs text-white/85">{withdrawStatus}</div>
+              )}
+
               {withdrawTxHash && (
-                <div className="mt-2 text-[11px] text-white/70 font-mono break-all">tx: {withdrawTxHash}</div>
+                <div className="mt-2 break-all font-mono text-[11px] text-white/70">tx: {withdrawTxHash}</div>
               )}
 
               <p className="mt-4 text-[11px] text-white/55">
