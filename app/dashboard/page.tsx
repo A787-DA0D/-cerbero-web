@@ -913,10 +913,12 @@ useEffect(() => {
 
         {/* ===== Withdraw Modal ===== */}
         {isWithdrawOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950 p-5">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="w-full max-w-xl rounded-3xl border border-white/15 bg-slate-900/95 shadow-2xl p-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Prelievo (USDC • Arbitrum)</h3>
+                <h3 className="text-sm font-semibold text-white">
+                  Prelievo (USDC • Arbitrum)
+                </h3>
                 <button
                   className="text-xs text-white/70 hover:text-white"
                   onClick={() => setIsWithdrawOpen(false)}
@@ -925,40 +927,67 @@ useEffect(() => {
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-2">
-                <input
-                  className="w-full rounded-lg px-3 py-2 text-black"
-                  placeholder="Indirizzo destinatario (0x...)"
-                  value={withdrawTo}
-                  onChange={(e) => setWithdrawTo(e.target.value)}
-                />
-                <input
-                  className="w-full rounded-lg px-3 py-2 text-black"
-                  placeholder="Importo USDC (es: 50.00)"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                />
+              <div className="mt-5 grid gap-3">
+                <div className="grid gap-1">
+                  <label className="text-[11px] text-white/70">
+                    Indirizzo destinatario
+                  </label>
+                  <input
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/20"
+                    placeholder="0x..."
+                    value={withdrawTo}
+                    onChange={(e) => setWithdrawTo(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+
+                <div className="grid gap-1">
+                  <label className="text-[11px] text-white/70">
+                    Importo USDC
+                  </label>
+                  <input
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/20"
+                    placeholder="es: 50.00"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    inputMode="decimal"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="mt-5 flex items-center gap-2">
                 <button
                   onClick={handleWithdraw}
                   disabled={isWithdrawing}
-                  className="rounded-lg bg-cyan-600 px-4 py-2 disabled:opacity-60"
+                  className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-black disabled:opacity-60 hover:bg-cyan-400"
                 >
                   {isWithdrawing ? "Invio..." : "Firma & Preleva"}
+                </button>
+
+                <button
+                  onClick={() => setIsWithdrawOpen(false)}
+                  className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+                >
+                  Annulla
                 </button>
               </div>
 
               {withdrawStatus && (
-                <div className="mt-3 whitespace-pre-wrap text-xs text-white/85">{withdrawStatus}</div>
+                <div className="mt-3 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/85">
+                  {withdrawStatus}
+                </div>
               )}
 
               {withdrawTxHash && (
-                <div className="mt-2 break-all font-mono text-[11px] text-white/70">tx: {withdrawTxHash}</div>
+                <div className="mt-2 break-all font-mono text-[11px] text-white/70">
+                  tx: {withdrawTxHash}
+                </div>
               )}
 
-              <p className="mt-4 text-[11px] text-white/55">
+              <p className="mt-5 text-[11px] text-white/55">
                 Flusso bank-grade: l’utente firma con Magic, il relayer paga gas, e i fondi escono dal Trading Account.
               </p>
             </div>
