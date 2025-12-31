@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     if (!sig) return jsonError(400, "Firma mancante");
 
     const amountBI = BigInt(amountRaw);
-    if (amountBI <= 0n) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
+    if (amountBI <= BigInt(0)) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
     const deadlineBI = BigInt(deadlineRaw);
 
     // 4) Resolve TradingAccount (TA) dal DB
