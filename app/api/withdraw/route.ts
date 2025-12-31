@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
-import { getSession } from "@/lib/auth";
 import { USDC_ABI } from "@/lib/abi/usdc";
 import { db } from "@/lib/db";
 
+import { getBearerSession } from "@/lib/bearer-session";
 // USDC Arbitrum One (native)
 const USDC_ADDR_FALLBACK = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 
@@ -52,10 +52,10 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
   return addr?.trim() || null;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     // 1) Auth (sessione Magic/JWT)
-    const session = await getSession(req);
+    const session = getBearerSession(req);
     const email = (session?.email || "").toLowerCase().trim();
     if (!email) return jsonError(401, "Must be authenticated!");
 
