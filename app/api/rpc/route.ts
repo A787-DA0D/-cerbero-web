@@ -8,15 +8,12 @@ export async function POST(req: Request) {
   if (!upstream) {
     return NextResponse.json({ error: "Missing ALCHEMY_HTTP_ARBITRUM" }, { status: 500 });
   }
-
   const body = await req.text();
-
   const r = await fetch(upstream, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body,
   });
-
   const text = await r.text();
   return new NextResponse(text, {
     status: r.status,

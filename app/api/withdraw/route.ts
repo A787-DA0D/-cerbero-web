@@ -1,10 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
 import { getBearerSession } from "@/lib/bearer-session";
 import { USDC_ABI } from "@/lib/abi/usdc";
 import { db } from "@/lib/db";
 
-const RPC_URL = (process.env.ARB_RPC_URL || "").trim();
+const RPC_URL = (
+  process.env.ARB_RPC_URL ||
+  process.env.ARBITRUM_RPC_URL ||
+  process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
+  ""
+).trim();
 const RELAYER_PK = (process.env.RELAYER_PRIVATE_KEY || "").trim();
 const USDC = (process.env.USDC || "").trim(); // 0xaf88... su Arbitrum One
 
@@ -40,15 +45,13 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
   return addr?.trim() || null;
 }
 
-export async function POST(req: Request) {
-  try {
-    // 1) Auth (Bearer: cerbero_session)
-    const session = getBearerSession(req as any); // NextRequest/Request: lo usiamo coerente col tuo summary
+  export async function POST(req: NextRequest) {
+    const session = getBearerSession(req);
     const email = (session?.email || "").toLowerCase().trim();
     if (!email) return jsonError(401, "Must be authenticated!");
 
     // 2) Env check
-    if (!RPC_URL) return jsonError(500, "ARB_RPC_URL mancante");
+    if (!RPC_URL) return jsonError(500, "Missing ARBITRUM RPC URL");
     if (!RELAYER_PK) return jsonError(500, "RELAYER_PRIVATE_KEY mancante");
     if (!USDC) return jsonError(500, "USDC mancante");
 
