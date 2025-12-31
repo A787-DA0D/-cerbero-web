@@ -75,7 +75,10 @@ const TA_SETUP_ABI = [
 ];
 
 
-const TA_ABI = ['function owner()(address)', 'function nonces(address)(uint256)'];
+const TA_ABI = [
+  'function owner() view returns (address)',
+  'function nonces(address) view returns (uint256)',
+];
 
 function toUSDCBaseUnits(value: string) {
   try {
@@ -427,13 +430,13 @@ useEffect(() => {
 
       // nonce = nonces[owner]
       const ta = new Contract(tradingAddress, TA_ABI, provider);
-      const nonce: bigint = await ta.nonces(ownerAddr);
+      const nonce: bigint = await ta.getFunction('nonces').staticCall(ownerAddr);
 
       const deadline = Math.floor(Date.now() / 1000) + 10 * 60; // 10 min
 
       const domain = {
         name: 'CerberoTradingAccount',
-        version: '1',
+        version: '3',
         chainId: CHAIN_ID,
         verifyingContract: tradingAddress,
       };
