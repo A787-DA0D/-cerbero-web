@@ -3,36 +3,54 @@ import { Contract, JsonRpcProvider, Wallet } from "ethers";
 import { db } from "@/lib/db";
 import { getBearerSession } from "@/lib/bearer-session";
 
-// USDC Arbitrum One (native)
+// Fallback USDC Arbitrum One (native)
 const USDC_ADDR_FALLBACK = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 
-// Minimal ERC20 ABI (avoid ABI/import mismatches)
-const ERC20_ABI = ["function balanceOf(address account) view returns (uint256)"];
+// Minimal ERC20 ABI (evitiamo mismatch tipo "balanceOf is not a function")
+const ERC20_ABI = ["function balanceOf(address) view returns (uint256)"];
 
-// TradingAccount ABI: ONLY what we need (no owner/nonces)
+// TradingAccount ABI: SOLO la funzione che usiamo
 const TA_ABI = [
   "function withdrawWithSig(address token,address to,uint256 amount,uint256 deadline,bytes sig)",
 ];
 
-function jsonError(status: number, message: string, code?: string) {
-  return NextResponse.json({ ok: false, error: message, code }, { status });
+// Probe ABI (non rompe nulla: proviamo a leggere varie possibili funzioni “signer/owner/nonce/domain”)
+const TA_PROBE_ABI = [
+  // signer/owner possibili
+  "function owner() view returns (address)",
+  "function signer() view returns (address)",
+  "function user() view returns (address)",
+  "function admin() view returns (address)",
+  "function wallet() view returns (address)",
+
+  // nonce possibili
+  "function nonce() view returns (uint256)",
+  "function getNonce() view returns (uint256)",
+  "function nonces(address) view returns (uint256)",
+
+  // domain possibili
+  "function DOMAIN_SEPARATOR() view returns (bytes32)",
+  "function eip712Domain() view returns (bytes1,string,string,uint256,address,bytes32,uint256[])",
+];
+
+function jsonError(status: number, message: string, code?: string, extra?: any) {
+  return NextResponse.json({ ok: false, error: message, code, ...(extra ? { extra } : {}) }, { status });
 }
 
-function s(v: any): string {
+function normalizeStr(v: any) {
   return (v ?? "").toString().trim();
 }
 
 function getRpcUrl() {
-  // accept all names used across Vercel / local
   return (
-    s(process.env.ARBITRUM_RPC_URL) ||
-    s(process.env.ARB_RPC_URL) ||
-    s(process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL)
+    normalizeStr(process.env.ARBITRUM_RPC_URL) ||
+    normalizeStr(process.env.ARB_RPC_URL) ||
+    normalizeStr(process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL)
   );
 }
 
 function getUsdcAddr() {
-  return s(process.env.USDC) || USDC_ADDR_FALLBACK;
+  return normalizeStr(process.env.USDC) || USDC_ADDR_FALLBACK;
 }
 
 async function fetchTradingAddress(email: string): Promise<string | null> {
@@ -47,58 +65,58 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
     `,
     [email]
   );
-
   const addr = res.rowCount ? (res.rows[0].arbitrum_address as string | null) : null;
   return addr?.trim() || null;
 }
 
+async function safeCall<T>(contract: Contract, fn: string, args: any[] = []): Promise<T | null> {
+  try {
+    // @ts-ignore
+    const v = await contract[fn](...args);
+    return v as T;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // 1) Auth (Magic Bearer session)
+    // 1) Auth (Bearer session)
     const session = getBearerSession(req);
-    const email = s(session?.email).toLowerCase();
+    const email = normalizeStr(session?.email).toLowerCase();
     if (!email) return jsonError(401, "Must be authenticated!");
 
     // 2) Env
     const RPC_URL = getRpcUrl();
-    const RELAYER_PK = s(process.env.RELAYER_PRIVATE_KEY);
+    const RELAYER_PK = normalizeStr(process.env.RELAYER_PRIVATE_KEY);
     const USDC = getUsdcAddr();
 
-    if (!RPC_URL) return jsonError(500, "ARB_RPC_URL mancante");
-    if (!RELAYER_PK) return jsonError(500, "RELAYER_PRIVATE_KEY mancante");
-    if (!USDC) return jsonError(500, "USDC mancante");
+    if (!RPC_URL) return jsonError(500, "RPC mancante", "MISSING_RPC");
+    if (!RELAYER_PK) return jsonError(500, "RELAYER_PRIVATE_KEY mancante", "MISSING_RELAYER_PK");
+    if (!USDC) return jsonError(500, "USDC mancante", "MISSING_USDC");
 
     // 3) Body
     const body = await req.json().catch(() => ({} as any));
 
-    const to = s(body?.to);
-    const amountRaw = s(body?.amount); // base units (6 dec)
-    const deadlineRaw = s(body?.deadline);
-    const sig = s(body?.sig);
+    const to = normalizeStr(body?.to);
+    const amountRaw = normalizeStr(body?.amount); // base units 6 dec
+    const deadlineRaw = normalizeStr(body?.deadline);
+    const sig = normalizeStr(body?.sig);
 
     if (!to) return jsonError(400, "Destinatario mancante");
     if (!amountRaw) return jsonError(400, "Importo mancante");
     if (!deadlineRaw) return jsonError(400, "Deadline mancante");
     if (!sig) return jsonError(400, "Firma mancante");
 
-    let amountBI: bigint;
-    let deadlineBI: bigint;
-
-    try {
-      amountBI = BigInt(amountRaw);
-      deadlineBI = BigInt(deadlineRaw);
-    } catch {
-      return jsonError(400, "Importo/Deadline non validi", "BAD_INPUT");
-    }
-
+    const amountBI = BigInt(amountRaw);
     if (amountBI <= BigInt(0)) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
-    if (deadlineBI <= BigInt(0)) return jsonError(400, "Deadline non valida", "BAD_DEADLINE");
+    const deadlineBI = BigInt(deadlineRaw);
 
-    // 4) Resolve TradingAccount (TA)
+    // 4) TradingAccount
     const TA = await fetchTradingAddress(email);
     if (!TA) return jsonError(404, "Trading account non trovato", "NO_TRADING_ACCOUNT");
 
-    // 5) Provider + relayer (gas)
+    // 5) Provider + relayer
     const provider = new JsonRpcProvider(RPC_URL);
     const relayer = new Wallet(RELAYER_PK, provider);
 
@@ -107,11 +125,71 @@ export async function POST(req: NextRequest) {
     const balBefore: bigint = await usdc.balanceOf(TA);
 
     if (balBefore < amountBI) {
-      return jsonError(400, "Saldo insufficiente", "INSUFFICIENT_BALANCE");
+      return jsonError(400, "Saldo insufficiente", "INSUFFICIENT_BALANCE", {
+        tradingAccount: TA,
+        balance: balBefore.toString(),
+        requested: amountBI.toString(),
+      });
     }
 
-    // 7) Execute withdrawWithSig
+    // 7) Call
     const ta = new Contract(TA, TA_ABI, relayer);
+
+    // Preflight: staticCall per ottenere revert reason pulita senza spendere gas
+    try {
+      // ethers v6: staticCall
+      // @ts-ignore
+      await ta.withdrawWithSig.staticCall(USDC, to, amountBI, deadlineBI, sig);
+    } catch (e: any) {
+      const msg = (e?.shortMessage || e?.message || "Withdraw preflight failed").toString();
+
+      // PROBING: capiamo che TA è, e chi è il signer atteso (se esiste una funzione per leggerlo)
+      const probe = new Contract(TA, TA_PROBE_ABI, provider);
+
+      const owner = await safeCall<string>(probe, "owner");
+      const signer = await safeCall<string>(probe, "signer");
+      const user = await safeCall<string>(probe, "user");
+      const admin = await safeCall<string>(probe, "admin");
+      const wallet = await safeCall<string>(probe, "wallet");
+
+      const nonce0 = await safeCall<any>(probe, "nonce");
+      const nonce1 = await safeCall<any>(probe, "getNonce");
+      const nonce2 = await safeCall<any>(probe, "nonces", [owner || signer || user || admin || wallet || "0x0000000000000000000000000000000000000000"]);
+
+      const domainSep = await safeCall<string>(probe, "DOMAIN_SEPARATOR");
+      const eip712Domain = await safeCall<any>(probe, "eip712Domain");
+
+      const extra = {
+        ta: TA,
+        token: USDC,
+        to,
+        amount: amountBI.toString(),
+        deadline: deadlineBI.toString(),
+        // se la session contiene anche address, lo vediamo (dipende da getBearerSession)
+        session: {
+          email,
+          address: (session as any)?.address || (session as any)?.walletAddress || null,
+        },
+        expectedSigner: owner || signer || user || admin || wallet || null,
+        nonce: (nonce0 ?? nonce1 ?? nonce2)?.toString?.() ?? null,
+        domainSep: domainSep || null,
+        eip712Domain: eip712Domain || null,
+        preflightError: msg,
+      };
+
+      // mapping leggibile
+      const low = msg.toLowerCase();
+      if (low.includes("bad_sig") || low.includes("invalid signature") || low.includes("signature")) {
+        return jsonError(400, "Firma non valida", "BAD_SIGNATURE", extra);
+      }
+      if (low.includes("expired") || low.includes("deadline")) {
+        return jsonError(400, "Richiesta scaduta", "EXPIRED", extra);
+      }
+
+      return jsonError(400, "Withdraw rifiutato dal TA", "TA_REJECTED", extra);
+    }
+
+    // Se preflight ok → inviamo tx reale
     const tx = await ta.withdrawWithSig(USDC, to, amountBI, deadlineBI, sig);
     const receipt = await tx.wait();
 
@@ -126,16 +204,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: any) {
     const msg = (e?.shortMessage || e?.message || "Unknown error").toString();
-
-    const m = msg.toLowerCase();
-    if (m.includes("expired")) return jsonError(400, "Richiesta scaduta", "EXPIRED");
-    if (m.includes("bad_sig") || m.includes("invalid signature") || m.includes("invalid sig"))
-      return jsonError(400, "Firma non valida", "BAD_SIGNATURE");
-    if (m.includes("to=0") || m.includes("invalid address"))
-      return jsonError(400, "Destinatario non valido", "BAD_TO");
-    if (m.includes("amount=0") || m.includes("invalid amount"))
-      return jsonError(400, "Importo non valido", "BAD_AMOUNT");
-
     return jsonError(500, msg);
   }
 }
