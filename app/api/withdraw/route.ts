@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
-import { USDC_ABI } from "@/lib/abi/usdc";
 import { db } from "@/lib/db";
 
 import { getBearerSession } from "@/lib/bearer-session";
 // USDC Arbitrum One (native)
 const USDC_ADDR_FALLBACK = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+
+// ABI minimale ERC20 (serve SOLO balanceOf)
+const ERC20_ABI = [
+  "function balanceOf(address account) view returns (uint256)",
+];
 
 // ABI del TradingAccount: SOLO quello che ci serve
 const TA_ABI = [
@@ -95,7 +99,7 @@ export async function POST(req: NextRequest) {
     const relayer = new Wallet(RELAYER_PK, provider);
 
     // 6) Check saldo USDC del TA (bank-grade UX)
-    const usdc = new Contract(USDC, USDC_ABI, provider);
+    const usdc = new Contract(USDC, ERC20_ABI, provider);
     const balBefore: bigint = await usdc.balanceOf(TA);
 
     if (balBefore < amountBI) {
