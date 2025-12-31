@@ -15,8 +15,6 @@ const ERC20_MIN_ABI = ["function balanceOf(address) view returns (uint256)"];
 // ABI del TradingAccount: solo quello che ci serve
 const TA_ABI = [
   "function withdrawWithSig(address token,address to,uint256 amount,uint256 deadline,bytes sig)",
-  "function nonces(address)(uint256)",
-  "function owner()(address)",
 ];
 
 function jsonError(status: number, message: string, code?: string, extra?: any) {
@@ -113,49 +111,6 @@ export async function POST(req: NextRequest) {
     // 6) Contracts read
     const usdc = new Contract(USDC, ERC20_MIN_ABI, provider);
     const taRead = new Contract(TA, TA_ABI, provider);
-
-    // Leggiamo owner & nonce per debug / sanity
-    let ownerAddr = "";
-    let nonceStr = "";
-    try {
-      ownerAddr = await taRead.owner();
-      const n = await taRead.nonces(ownerAddr);
-      nonceStr = n?.toString?.() ? n.toString() : String(n);
-    } catch (e: any) {
-      // Se TA non espone owner/nonces come previsto, lo vediamo subito
-      return jsonError(500, "TA ABI mismatch (owner/nonces)", "TA_ABI_MISMATCH", debug ? { details: (e?.message || "").toString() } : undefined);
-    }
-
-    // 7) Check saldo USDC
-    const balBefore: bigint = await usdc.balanceOf(TA);
-    if (balBefore < amountBI) {
-      return jsonError(400, "Saldo insufficiente", "INSUFFICIENT_BALANCE", debug ? { balance: balBefore.toString(), tradingAccount: TA } : undefined);
-    }
-
-    // 8) Execute withdrawWithSig (gas paid by relayer)
-    const taWrite = new Contract(TA, TA_ABI, relayer);
-
-    const tx = await taWrite.withdrawWithSig(USDC, to, amountBI, deadlineBI, sig);
-    const receipt = await tx.wait();
-
-    const balAfter: bigint = await usdc.balanceOf(TA);
-
-    return NextResponse.json({
-      ok: true,
-      txHash: receipt?.hash || tx.hash,
-      tradingAccount: TA,
-      balanceBefore: balBefore.toString(),
-      balanceAfter: balAfter.toString(),
-    });
-  } catch (e: any) {
-    const msg = (e?.shortMessage || e?.message || "Unknown error").toString();
-
-    const low = msg.toLowerCase();
-    if (low.includes("expired")) return jsonError(400, "Richiesta scaduta", "EXPIRED");
-    if (low.includes("bad_sig") || low.includes("bad signature") || low.includes("invalid signature"))
-      return jsonError(400, "Firma non valida", "BAD_SIGNATURE");
-    if (low.includes("to=0")) return jsonError(400, "Destinatario non valido", "BAD_TO");
-    if (low.includes("amount=0")) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
 
     return jsonError(500, msg);
   }
