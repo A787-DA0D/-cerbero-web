@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
-import { getSession } from "@/lib/auth";
+import { getBearerSession } from "@/lib/bearer-session";
 import { USDC_ABI } from "@/lib/abi/usdc";
 import { db } from "@/lib/db";
 
@@ -42,8 +42,8 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
 
 export async function POST(req: Request) {
   try {
-    // 1) Auth (sessione Magic/JWT)
-    const session = await getSession(req);
+    // 1) Auth (Bearer: cerbero_session)
+    const session = getBearerSession(req as any); // NextRequest/Request: lo usiamo coerente col tuo summary
     const email = (session?.email || "").toLowerCase().trim();
     if (!email) return jsonError(401, "Must be authenticated!");
 
