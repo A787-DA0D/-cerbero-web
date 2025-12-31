@@ -1,17 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
-import { getBearerSession } from "@/lib/bearer-session";
+import { getSession } from "@/lib/auth";
 import { USDC_ABI } from "@/lib/abi/usdc";
 import { db } from "@/lib/db";
 
-const RPC_URL = (
-  process.env.ARB_RPC_URL ||
-  process.env.ARBITRUM_RPC_URL ||
-  process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
-  ""
-).trim();
-const RELAYER_PK = (process.env.RELAYER_PRIVATE_KEY || "").trim();
-const USDC = (process.env.USDC || "").trim(); // 0xaf88... su Arbitrum One
+// USDC Arbitrum One (native)
+const USDC_ADDR_FALLBACK = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
 
 // ABI del TradingAccount: SOLO quello che ci serve
 const TA_ABI = [
@@ -25,7 +19,20 @@ function jsonError(status: number, message: string, code?: string) {
 }
 
 function normalizeEvmAddr(a: string) {
-  return a.trim();
+  return (a || "").toString().trim();
+}
+
+function getRpcUrl() {
+  // Accettiamo TUTTI i nomi che stai usando in repo/Vercel
+  return (
+    (process.env.ARBITRUM_RPC_URL || "").trim() ||
+    (process.env.ARB_RPC_URL || "").trim() ||
+    (process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || "").trim()
+  );
+}
+
+function getUsdcAddr() {
+  return (process.env.USDC || "").trim() || USDC_ADDR_FALLBACK;
 }
 
 async function fetchTradingAddress(email: string): Promise<string | null> {
@@ -45,23 +52,29 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
   return addr?.trim() || null;
 }
 
-  export async function POST(req: NextRequest) {
-    const session = getBearerSession(req);
+export async function POST(req: Request) {
+  try {
+    // 1) Auth (sessione Magic/JWT)
+    const session = await getSession(req);
     const email = (session?.email || "").toLowerCase().trim();
     if (!email) return jsonError(401, "Must be authenticated!");
 
     // 2) Env check
-    if (!RPC_URL) return jsonError(500, "Missing ARBITRUM RPC URL");
+    const RPC_URL = getRpcUrl();
+    const RELAYER_PK = (process.env.RELAYER_PRIVATE_KEY || "").trim();
+    const USDC = getUsdcAddr();
+
+    if (!RPC_URL) return jsonError(500, "ARB_RPC_URL mancante");
     if (!RELAYER_PK) return jsonError(500, "RELAYER_PRIVATE_KEY mancante");
     if (!USDC) return jsonError(500, "USDC mancante");
 
     // 3) Body: servono TUTTI (firma EIP-712 generata dal client)
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({} as any));
 
-    const to = normalizeEvmAddr(body?.to || "");
-    const amountRaw = (body?.amount || "").toString().trim(); // base units (6 dec)
-    const deadlineRaw = (body?.deadline || "").toString().trim();
-    const sig = (body?.sig || "").toString().trim();
+    const to = normalizeEvmAddr(body?.to);
+    const amountRaw = normalizeEvmAddr(body?.amount); // base units (6 dec)
+    const deadlineRaw = normalizeEvmAddr(body?.deadline);
+    const sig = normalizeEvmAddr(body?.sig);
 
     if (!to) return jsonError(400, "Destinatario mancante");
     if (!amountRaw) return jsonError(400, "Importo mancante");
@@ -69,7 +82,7 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
     if (!sig) return jsonError(400, "Firma mancante");
 
     const amountBI = BigInt(amountRaw);
-    if (amountBI <= BigInt(0)) return jsonError(400, "Importo non valido");
+    if (amountBI <= 0n) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
 
     const deadlineBI = BigInt(deadlineRaw);
 
@@ -82,21 +95,15 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
     const relayer = new Wallet(RELAYER_PK, provider);
 
     // 6) Check saldo USDC del TA (bank-grade UX)
-    const usdc = new Contract(USDC, USDC_ABI, provider); // read-only va benissimo
+    const usdc = new Contract(USDC, USDC_ABI, provider);
     const balBefore: bigint = await usdc.balanceOf(TA);
 
     if (balBefore < amountBI) {
       return jsonError(400, "Saldo insufficiente", "INSUFFICIENT_BALANCE");
     }
 
-    // (opzionale UX) feeBuffer — NON è una fee reale, solo messaggio user-friendly
-    // Se vuoi tenerlo: 0.02 USDC = 20000 base units
-    // const feeBuffer = 20000n;
-    // if (balBefore < amountBI + feeBuffer) return jsonError(400, "Saldo insufficiente per commissioni", "INSUFFICIENT_FOR_FEES");
-
     // 7) Chiamata: TA.withdrawWithSig(USDC, to, amount, deadline, sig)
     const ta = new Contract(TA, TA_ABI, relayer);
-
     const tx = await ta.withdrawWithSig(USDC, to, amountBI, deadlineBI, sig);
     const receipt = await tx.wait();
 
@@ -113,10 +120,10 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
     const msg = (e?.shortMessage || e?.message || "Unknown error").toString();
 
     // mapping “banca”: errori più leggibili
-    if (msg.includes("expired")) return jsonError(400, "Richiesta scaduta", "EXPIRED");
-    if (msg.includes("bad_sig")) return jsonError(400, "Firma non valida", "BAD_SIGNATURE");
-    if (msg.includes("to=0")) return jsonError(400, "Destinatario non valido", "BAD_TO");
-    if (msg.includes("amount=0")) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
+    if (msg.toLowerCase().includes("expired")) return jsonError(400, "Richiesta scaduta", "EXPIRED");
+    if (msg.toLowerCase().includes("bad_sig")) return jsonError(400, "Firma non valida", "BAD_SIGNATURE");
+    if (msg.toLowerCase().includes("to=0")) return jsonError(400, "Destinatario non valido", "BAD_TO");
+    if (msg.toLowerCase().includes("amount=0")) return jsonError(400, "Importo non valido", "BAD_AMOUNT");
 
     return jsonError(500, msg);
   }
