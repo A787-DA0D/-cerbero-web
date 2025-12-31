@@ -436,7 +436,7 @@ useEffect(() => {
 
       const domain = {
         name: 'CerberoTradingAccount',
-        version: '3',
+        version: '1',
         chainId: CHAIN_ID,
         verifyingContract: tradingAddress,
       };
