@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     const email = (session?.email || "").toLowerCase().trim();
     if (!email) return jsonError(401, "Unauthorized");
 
+    // ✅ prendi TA “latest” da contracts, fallback a smart_contract_address
     const res = await db.query(
       `
       SELECT
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
         t.autopilot_enabled,
         t.smart_contract_address,
         c.arbitrum_address
-      FROM tenants
+      FROM tenants t
       LEFT JOIN contracts c ON c.tenant_id = t.id
       WHERE t.email = $1
       ORDER BY c.created_at DESC NULLS LAST
@@ -40,22 +41,28 @@ export async function GET(req: NextRequest) {
     const tradingAddress = (row.arbitrum_address || row.smart_contract_address || null) as string | null;
     const autopilotEnabled = !!row.autopilot_enabled;
 
-    // ✅ ONCHAIN BALANCE (source of truth)
+    // ✅ non bloccare la UI se RPC manca o fallisce: balance resta null
     let balanceUSDC: number | null = null;
 
     if (tradingAddress) {
       const rpcUrl =
-        process.env.ARBITRUM_RPC_URL || process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL;
+        process.env.ARB_RPC_URL ||
+        process.env.ARBITRUM_RPC_URL ||
+        process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL;
 
-      if (!rpcUrl) {
-        return jsonError(500, "Missing ARBITRUM_RPC_URL");
+      if (rpcUrl) {
+        try {
+          const provider = new JsonRpcProvider(rpcUrl, 42161);
+          const usdc = new Contract(USDC, ERC20_ABI, provider);
+          const bal: bigint = await usdc.balanceOf(tradingAddress);
+          balanceUSDC = Number(formatUnits(bal, USDC_DECIMALS));
+        } catch (e) {
+          console.error("[/api/tenant/summary] onchain balance error:", e);
+          balanceUSDC = null;
+        }
+      } else {
+        console.error("[/api/tenant/summary] Missing RPC env (ARB_RPC_URL / ARBITRUM_RPC_URL)");
       }
-
-      const provider = new JsonRpcProvider(rpcUrl, 42161);
-      const usdc = new Contract(USDC, ERC20_ABI, provider);
-      const bal: bigint = await usdc.balanceOf(tradingAddress);
-
-      balanceUSDC = Number(formatUnits(bal, USDC_DECIMALS));
     }
 
     return NextResponse.json(
@@ -65,7 +72,7 @@ export async function GET(req: NextRequest) {
         tradingAddress,
         balanceUSDC,
         autopilotEnabled,
-        source: "onchain_balanceOf",
+        source: balanceUSDC === null ? "db_only" : "onchain_balanceOf",
       },
       { status: 200 }
     );
