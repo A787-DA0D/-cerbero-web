@@ -2,6 +2,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import { getBearerSession } from "@/lib/bearer-session";
 
 function jsonError(status: number, message: string) {
@@ -18,6 +19,18 @@ export async function GET(req: NextRequest) {
   try {
     const session = getBearerSession(req);
     const email = (session?.email || "").toLowerCase().trim();
+
+    // autopilot flag (DB truth)
+    let autopilotEnabled: boolean | null = null;
+    try {
+      const r = await db.query(
+        `SELECT autopilot_enabled FROM tenants WHERE lower(email) = $1 LIMIT 1;`,
+        [email.toLowerCase()]
+      );
+      if (r.rowCount) autopilotEnabled = !!r.rows[0].autopilot_enabled;
+    } catch (e) {
+      console.error("[/api/coordinator/balance] autopilotEnabled DB error:", e);
+    }
     if (!email) return jsonError(401, "Unauthorized");
 
     const COORD_URL = mustEnv("COORDINATOR_BASE_URL");
@@ -43,9 +56,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      {
-        ok: true,
+    return NextResponse.json({
+      ok: true,
+      autopilotEnabled: autopilotEnabled ?? false,
         tradingAddress: data.resolved_address ?? null,
         balanceUSDC: typeof data.balance_usdc === "number" ? data.balance_usdc : null,
         source: data.source ?? "coordinator",
