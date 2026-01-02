@@ -211,7 +211,7 @@ useEffect(() => {
 
       if (!token) return;
 
-      const res = await fetch("/api/tenant/summary", {
+      const res = await fetch("/api/coordinator/balance", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
