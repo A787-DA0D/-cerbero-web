@@ -363,7 +363,7 @@ useEffect(() => {
         return;
       }
 
-      setIsAutotradingOn(nextValue);
+      setIsAutotradingOn(Boolean(data.autopilot_enabled));
     } catch (err) {
       console.error('/api/autotrading/toggle errore:', err);
       setAutotradingMessage('Errore di connessione. Controlla la rete e riprova.');
