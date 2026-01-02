@@ -237,8 +237,15 @@ useEffect(() => {
         setTradingAddress(data.tradingAddress);
       }
 
-      if (typeof data.autopilotEnabled === "boolean") {
-        setIsAutotradingOn(data.autopilotEnabled);
+      const autopilot =
+        typeof data.autopilotEnabled === "boolean"
+          ? data.autopilotEnabled
+          : typeof data.autopilot_enabled === "boolean"
+          ? data.autopilot_enabled
+          : null;
+
+      if (autopilot !== null) {
+        setIsAutotradingOn(autopilot);
       }
     } catch (err) {
       console.error("[dashboard] loadSummary error:", err);
