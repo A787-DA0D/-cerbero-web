@@ -66,12 +66,14 @@ const USDC_DECIMALS = 6;
 
 const GNS_DIAMOND = '0xFF162c694eAA571f685030649814282eA457f169';
 
+const EXECUTOR = '0x7C0cf0540B053DB33840Ccb42e24b2cD02794121';
+
 const GNS_ABI = [
   'function getTradingDelegate(address trader) view returns (address)',
 ];
 
 const TA_SETUP_ABI = [
-  'function setTradingDelegate(address delegate) external',
+  'function setTradingDelegateWithSig(address delegate,uint256 deadline,bytes sig) external',
 ];
 
 
@@ -443,7 +445,7 @@ useEffect(() => {
 
       const domain = {
         name: 'CerberoTradingAccount',
-        version: '1',
+        version: '3',
         chainId: CHAIN_ID,
         verifyingContract: tradingAddress,
       };
@@ -518,25 +520,52 @@ useEffect(() => {
       const current: string = await gns.getTradingDelegate(tradingAddress);
 
       setDelegateAddress(current);
-
-      // Se già self-delegate, ok
-      if (current && current.toLowerCase() === tradingAddress.toLowerCase()) {
+      // Se già delegato al Ponte/Executor, ok
+      if (current && current.toLowerCase() === EXECUTOR.toLowerCase()) {
         setDelegateStatus('✅ Autotrading già abilitato (delegate ok).');
         return;
       }
 
       setDelegateStatus('Firma richiesta: abilita Autotrading (one-time)…');
 
+      // EIP-712: SetDelegate(delegate, nonce, deadline) — domain CerberoTradingAccount v3
+      const taRead = new Contract(tradingAddress, TA_ABI, provider);
+      const ownerAddr = await signer.getAddress();
+      const nonce: bigint = await taRead.getFunction('nonces').staticCall(ownerAddr);
+      const deadline = Math.floor(Date.now() / 1000) + 10 * 60; // 10 min
+
+      const domain = {
+        name: 'CerberoTradingAccount',
+        version: '3',
+        chainId: CHAIN_ID,
+        verifyingContract: tradingAddress,
+      };
+
+      const types = {
+        SetDelegate: [
+          { name: 'delegate', type: 'address' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+        ],
+      };
+
+      const message = {
+        delegate: EXECUTOR,
+        nonce: nonce.toString(),
+        deadline,
+      };
+
+      const sig = await signer.signTypedData(domain as any, types as any, message as any);
+
       const ta = new Contract(tradingAddress, TA_SETUP_ABI, signer);
-      const tx = await ta.setTradingDelegate(tradingAddress);
+      const tx = await ta.setTradingDelegateWithSig(EXECUTOR, BigInt(deadline), sig);
 
-      setDelegateStatus(`Tx inviata: ${tx.hash}. Attendo conferma...`);
-
+      setDelegateStatus('Tx inviata: ' + tx.hash + '. Attendo conferma...');
       await tx.wait();
 
       setDelegateStatus('✅ Abilitazione completata. Delegate aggiornato.');
       await refreshDelegateStatus();
-    } catch (e: any) {
+} catch (e: any) {
       console.error('[delegate] setup error', e);
       setDelegateStatus(e?.message || 'Errore inatteso durante il setup.');
     } finally {
