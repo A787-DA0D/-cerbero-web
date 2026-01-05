@@ -25,7 +25,7 @@ export default function DelegatePage() {
       const signer = await provider.getSigner();
       const owner = await signer.getAddress();
 
-      const ta = new ethers.Contract(TA_ADDRESS, ABI, provider);
+      const ta: any = new Contract(TA_ADDRESS, TA_ABI, provider);
       const nonce = await ta.nonces(owner);
 
       const deadline = Math.floor(Date.now() / 1000) + 3600;
