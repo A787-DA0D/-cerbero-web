@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ethers } from 'ethers';
+import { BrowserProvider, Contract } from 'ethers';
 
 const TA_ADDRESS = '0x5Ef03958c1fECA31f12B508a17e8a9F0B5e2A3cc'; // TA founder
 const DELEGATE = '0x7C0cf0540B053DB33840Ccb42e24b2cD02794121'; // Ponte
@@ -21,11 +21,11 @@ export default function DelegatePage() {
 
       // Magic / injected provider
       // @ts-ignore
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const owner = await signer.getAddress();
 
-      const ta: any = new Contract(TA_ADDRESS, TA_ABI, provider);
+      const ta: any = new Contract(TA_ADDRESS, ABI, provider);
       const nonce = await ta.nonces(owner);
 
       const deadline = Math.floor(Date.now() / 1000) + 3600;
