@@ -38,9 +38,9 @@ export default function DelegateMagicPage() {
   const types = useMemo(
     () => ({
       SetDelegate: [
-        { name: "CerberoTradingAccount", type: "address" },
-        { name: "CerberoTradingAccount", type: "uint256" },
-        { name: "CerberoTradingAccount", type: "uint256" },
+        { name: "delegate", type: "address" },
+        { name: "nonce", type: "uint256" },
+        { name: "deadline", type: "uint256" },
       ],
     }),
     []
