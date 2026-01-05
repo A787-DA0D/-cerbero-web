@@ -27,8 +27,8 @@ export default function DelegateMagicPage() {
 
   const domain = useMemo(
     () => ({
-      name: "TradingAccountV3",
-      version: "1",
+      name: "CerberoTradingAccount",
+      version: "3",
       chainId: CHAIN_ID,
       verifyingContract: TA_ADDRESS,
     }),
@@ -38,9 +38,9 @@ export default function DelegateMagicPage() {
   const types = useMemo(
     () => ({
       SetDelegate: [
-        { name: "delegate", type: "address" },
-        { name: "nonce", type: "uint256" },
-        { name: "deadline", type: "uint256" },
+        { name: "CerberoTradingAccount", type: "address" },
+        { name: "CerberoTradingAccount", type: "uint256" },
+        { name: "CerberoTradingAccount", type: "uint256" },
       ],
     }),
     []
