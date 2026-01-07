@@ -2,7 +2,6 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getBearerSession } from "@/lib/bearer-session";
 
 function jsonError(status: number, message: string) {
@@ -15,26 +14,27 @@ function mustEnv(name: string) {
   return v;
 }
 
+function toNumber(x: any): number | null {
+  if (typeof x === "number") return Number.isFinite(x) ? x : null;
+  if (typeof x === "string") {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = getBearerSession(req);
     const email = (session?.email || "").toLowerCase().trim();
-
-    // autopilot flag (DB truth)
-    let autopilotEnabled: boolean | null = null;
-    try {
-      const r = await db.query(
-        `SELECT autopilot_enabled FROM tenants WHERE lower(email) = $1 LIMIT 1;`,
-        [email.toLowerCase()]
-      );
-      if (r.rowCount) autopilotEnabled = !!r.rows[0].autopilot_enabled;
-    } catch (e) {
-      console.error("[/api/coordinator/balance] autopilotEnabled DB error:", e);
-    }
     if (!email) return jsonError(401, "Unauthorized");
+    const autopilotEnabled = false; // TEMP: no DB in this endpoint
 
     const COORD_URL = mustEnv("COORDINATOR_BASE_URL");
-    const COORD_KEY = mustEnv("COORDINATOR_API_KEY");
+    // IMPORTANT: /v1/account/balance is INTERNAL
+    const COORD_KEY =
+      (process.env["COORDINATOR_INTERNAL_KEY"] || "").trim() ||
+      mustEnv("COORDINATOR_API_KEY"); // fallback, ma meglio settare INTERNAL
 
     const url = new URL("/v1/account/balance", COORD_URL);
     url.searchParams.set("user_id", email);
@@ -56,11 +56,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      autopilotEnabled: autopilotEnabled ?? false,
-        tradingAddress: data.resolved_address ?? null,
-        balanceUSDC: typeof data.balance_usdc === "number" ? data.balance_usdc : null,
+    return NextResponse.json(
+      {
+        ok: true,
+        autopilotEnabled: autopilotEnabled,
+        tradingAddress: data.resolved_address ?? data.smart_contract_address ?? null,
+        balanceUSDC: toNumber(data.balance_usdc ?? data.balanceUSDC),
         source: data.source ?? "coordinator",
       },
       { status: 200 }
