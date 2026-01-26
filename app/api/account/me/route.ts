@@ -18,7 +18,7 @@ function normalizeStr(v: any) {
 async function fetchTradingAddress(email: string): Promise<string | null> {
   const res = await db.query(
     `
-    SELECT c.arbitrum_address
+    SELECT c.smart_contract_address
     FROM contracts c
     JOIN tenants t ON t.id = c.tenant_id
     WHERE t.email = $1
@@ -28,7 +28,7 @@ async function fetchTradingAddress(email: string): Promise<string | null> {
     [email]
   );
 
-  const addr = res.rowCount ? (res.rows[0].arbitrum_address as string | null) : null;
+  const addr = res.rowCount ? (res.rows[0].smart_contract_address as string | null) : null;
   return addr?.trim() || null;
 }
 

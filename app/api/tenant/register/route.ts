@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         smart_contract_address = EXCLUDED.smart_contract_address,
         autopilot_enabled = EXCLUDED.autopilot_enabled,
         updated_at = NOW()
-      RETURNING id, email, wallet_magic, smart_contract_address, autopilot_enabled, balance_usdc, created_at, updated_at;
+      RETURNING id, email, wallet_magic, smart_contract_address, autopilot_enabled, created_at, updated_at;
     `;
 
     const values = [email, walletMagic, smartContractAddress, autopilotEnabled];

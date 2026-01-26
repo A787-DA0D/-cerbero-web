@@ -82,7 +82,7 @@ export default function CookiesPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Magic.link (autenticazione)</li>
             <li>Stripe (pagamenti)</li>
-            <li>Transak / Ramp (on-ramp)</li>
+            <li></li>
             <li>Google Cloud Platform</li>
             <li>strumenti analytics</li>
           </ul>

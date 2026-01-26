@@ -90,7 +90,7 @@ export default function PrivacyPage() {
           </ul>
 
           <h3 className="font-medium text-white/90 mt-3">
-            Dati provenienti da servizi di on-ramp (Transak, Ramp)
+            Dati provenienti da servizi di on-ramp 
           </h3>
           <ul className="list-disc pl-5 space-y-1">
             <li>wallet address;</li>
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
             <li>funzionamento della Piattaforma (Autopilot, dashboard, smart contract dedicati);</li>
             <li>autenticazione tramite Magic.link;</li>
             <li>gestione dei pagamenti (Stripe);</li>
-            <li>riconciliazione on-ramp (Transak/Ramp);</li>
+            <li>riconciliazione on-ramp ;</li>
             <li>sicurezza, prevenzione abusi e integrità del Servizio;</li>
             <li>assistenza clienti;</li>
             <li>analisi aggregate per miglioramento del Servizio;</li>
@@ -200,7 +200,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Magic.link (autenticazione);</li>
             <li>Stripe (pagamenti);</li>
-            <li>Transak e Ramp (on-ramp);</li>
+            <li>;</li>
             <li>Google Cloud (hosting e database);</li>
             <li>fornitori tecnici di sicurezza, logging e email transactional;</li>
             <li>consulenti legali/contabili quando necessario.</li>
