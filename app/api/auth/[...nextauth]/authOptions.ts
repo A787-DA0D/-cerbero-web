@@ -13,7 +13,7 @@ export const pool = new Pool({
 export async function isTenantEmail(email: string) {
   const q = "select 1 from tenants where lower(email)=lower($1) limit 1";
   const r = await pool.query(q, [email]);
-  return r.rowCount > 0;
+  return (r.rowCount ?? 0) > 0;
 }
 
 export const authOptions: NextAuthOptions = {

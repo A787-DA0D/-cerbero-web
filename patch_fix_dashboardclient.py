@@ -1,4 +1,12 @@
-'use client';
+#!/usr/bin/env python3
+from __future__ import annotations
+from pathlib import Path
+from datetime import datetime
+
+TARGET = Path("app/dashboard/DashboardClient.tsx")
+STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+CONTENT = r"""'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
@@ -210,3 +218,18 @@ export default function DashboardClient({ initialEmail }: DashboardClientProps) 
     </div>
   );
 }
+"""
+
+def main():
+  if TARGET.exists():
+    bak = TARGET.with_suffix(TARGET.suffix + f".bak_{STAMP}")
+    bak.write_text(TARGET.read_text(encoding="utf-8"), encoding="utf-8")
+    print(f"📦 Backup: {bak}")
+  else:
+    TARGET.parent.mkdir(parents=True, exist_ok=True)
+
+  TARGET.write_text(CONTENT.rstrip() + "\n", encoding="utf-8")
+  print("✅ DashboardClient.tsx riscritto correttamente (props initialEmail incluse).")
+
+if __name__ == "__main__":
+  main()

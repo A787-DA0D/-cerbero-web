@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      exists: r.rowCount > 0,
+      exists: (r.rowCount ?? 0) > 0,
     });
   } catch (err) {
     console.error("tenant exists error", err);
