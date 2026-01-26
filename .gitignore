@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python cache (safety)
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# ===== Cerbero temp / backups =====
+*.bak
+*.bak_*
+*.bak_nav
+*.GOLDEN
+
+# patch scripts / temp tools
+scripts/
+scripts/**
+app/**/*.bak
+app/**/*.bak_*
+
+# debug / temp pages
+app/debug/

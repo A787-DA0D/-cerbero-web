@@ -2,980 +2,738 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import React, { useMemo } from 'react';
 
-/* --------------------------------- NAV --------------------------------- */
+/* ----------------------------- helpers ----------------------------- */
 
 const navItems = [
-  { id: 'protocollo', label: 'PROTOCOLLO' },
-  { id: 'pricing', label: 'PRICING' },
-  { id: 'controllo', label: 'CONTROLLO' },
-  { id: 'coming', label: 'COMING NEXT' },
+  { id: 'filosofia', label: 'Filosofia' },
+  { id: 'matrix', label: 'Matrix Asset' },
+  { id: 'onboarding', label: 'Come Iniziare' },
+  { id: 'pricing', label: 'Pricing' },
 ];
 
-function scrollToSection(id: string) {
+function scrollTo(id: string) {
   if (typeof document === 'undefined') return;
   const el = document.getElementById(id);
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-/* -------------------------------- VARIANTS ------------------------------- */
+function classNames(...xs: Array<string | undefined | false>) {
+  return xs.filter(Boolean).join(' ');
+}
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 22 },
-  visible: { opacity: 1, y: 0 },
-};
+/* ----------------------------- UI atoms ----------------------------- */
 
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
+function GlassPanel({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={classNames(
+        'border border-white/60 bg-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.05)] backdrop-blur-[20px]',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
-const sectionContainer = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.08, delayChildren: 0.04 },
-  },
-};
+function GlassCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={classNames(
+        'bg-white/85 border border-white/90 transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)] hover:border-white rounded-[32px]',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
-/* ---------------------------- AURORA BACKDROP ---------------------------- */
+function Pill({
+  children,
+  tone = 'slate',
+}: {
+  children: React.ReactNode;
+  tone?: 'indigo' | 'emerald' | 'amber' | 'orange' | 'slate';
+}) {
+  const toneClass =
+    tone === 'indigo'
+      ? 'border-indigo-100 text-indigo-800 bg-white/50'
+      : tone === 'emerald'
+      ? 'border-emerald-100 text-emerald-800 bg-white/50'
+      : tone === 'amber'
+      ? 'border-amber-100 text-amber-800 bg-white/50'
+      : tone === 'orange'
+      ? 'border-orange-100 text-orange-800 bg-white/50'
+      : 'border-slate-200 text-slate-700 bg-white/50';
+
+  return (
+    <div
+      className={classNames(
+        'flex items-center gap-2 px-3 py-2 rounded-lg border backdrop-blur-sm shadow-sm transition-transform hover:scale-[1.03] cursor-default',
+        toneClass
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Dot({ on }: { on?: boolean }) {
+  return (
+    <span
+      className={classNames(
+        'w-1.5 h-1.5 rounded-full',
+        on ? 'bg-emerald-500' : 'bg-slate-600'
+      )}
+    />
+  );
+}
+
+/* ----------------------------- sections ----------------------------- */
 
 function AuroraBackground() {
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-slate-50">
-      <div className="absolute -top-10 -left-10 h-[28rem] w-[28rem] rounded-full blur-[80px] opacity-60 mix-blend-multiply bg-purple-200 animate-blob" />
-      <div className="absolute -top-10 -right-10 h-[28rem] w-[28rem] rounded-full blur-[80px] opacity-60 mix-blend-multiply bg-cyan-200 animate-blob [animation-delay:2s]" />
-      <div className="absolute -bottom-10 left-20 h-[28rem] w-[28rem] rounded-full blur-[80px] opacity-60 mix-blend-multiply bg-pink-200 animate-blob [animation-delay:4s]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/0 to-white/60" />
+    <div className="fixed inset-0 -z-10 overflow-hidden bg-slate-50">
+      <div className="absolute -top-[30%] -left-[10%] h-[900px] w-[900px] rounded-full bg-indigo-200/40 blur-[120px] mix-blend-multiply" />
+      <div className="absolute -bottom-[20%] -right-[10%] h-[700px] w-[700px] rounded-full bg-fuchsia-100/45 blur-[120px] mix-blend-multiply" />
+      <div className="absolute top-[40%] left-[30%] h-[500px] w-[500px] rounded-full bg-cyan-100/45 blur-[120px] mix-blend-multiply" />
     </div>
   );
 }
 
-export default function HomePage() {
-  const { scrollYProgress } = useScroll();
-
-  // “respiro” leggero durante scroll (in stile luminous)
-  const glowScale = useTransform(scrollYProgress, [0, 1], [1, 1.06]);
-  const glowOpacity = useTransform(scrollYProgress, [0, 1], [0.35, 0.75]);
-  const gridOpacity = useTransform(scrollYProgress, [0, 1], [0.06, 0.12]);
+function AssetTicker() {
+  const items = useMemo(
+    () => [
+      'GOLD (XAU) • LONG',
+      'BTC/USD • ACCUMULO',
+      'NASDAQ • HEDGING',
+      'EUR/USD • NEUTRAL',
+      'OIL (WTI) • SHORT',
+      'ETH/USD • SCANNING',
+      'GERMANIA40 • LONG',
+      'SPX500 • WAITING',
+      'NIKKEI225 • VOLATILE',
+      'GBP/JPY • TARGET HIT',
+    ],
+    []
+  );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden scroll-smooth bg-slate-50 text-slate-800 selection:bg-indigo-500 selection:text-white">
-      <AuroraBackground />
-
-      {/* Overlay + micro grid (molto soft, non “cyber”) */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <motion.div style={{ opacity: gridOpacity }} className="absolute inset-0">
-          <div
-            className="h-full w-full"
-            style={{
-              backgroundImage:
-                'linear-gradient(to right, rgba(15,23,42,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.05) 1px, transparent 1px)',
-              backgroundSize: '84px 84px',
-              maskImage:
-                'radial-gradient(circle at 55% 30%, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 72%)',
-              WebkitMaskImage:
-                'radial-gradient(circle at 55% 30%, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 72%)',
-            }}
-          />
-        </motion.div>
-
-        {/* Glow dinamici (chiari) */}
-        <motion.div
-          style={{ scale: glowScale, opacity: glowOpacity }}
-          className="absolute -top-44 -left-44 h-[520px] w-[520px] rounded-full bg-purple-200/60 blur-3xl"
-        />
-        <motion.div
-          style={{ scale: glowScale, opacity: glowOpacity }}
-          className="absolute top-1/4 -right-44 h-[520px] w-[520px] rounded-full bg-cyan-200/50 blur-3xl"
-        />
-        <motion.div
-          style={{ scale: glowScale, opacity: glowOpacity }}
-          className="absolute bottom-[-220px] left-1/3 h-[620px] w-[620px] rounded-full bg-pink-200/55 blur-3xl"
-        />
-
-        {/* Pulse layer */}
-        <motion.div
-          className="absolute inset-0"
-          animate={{ opacity: [0.25, 0.5, 0.25] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <div className="absolute left-[12%] top-[22%] h-56 w-56 rounded-full bg-purple-200/35 blur-3xl" />
-          <div className="absolute right-[10%] top-[18%] h-72 w-72 rounded-full bg-cyan-200/30 blur-3xl" />
-          <div className="absolute bottom-[10%] left-[45%] h-72 w-72 rounded-full bg-pink-200/30 blur-3xl" />
-        </motion.div>
+    <div className="w-full bg-slate-900 overflow-hidden py-3 border-y border-slate-800 relative z-40">
+      <div className="flex whitespace-nowrap gap-12 text-xs font-bold text-slate-400 font-mono tracking-widest uppercase animate-[marquee_40s_linear_infinite]">
+        {items.concat(items).map((item, i) => {
+          const on = item.includes('LONG') || item.includes('TARGET');
+          return (
+            <span key={i} className="flex items-center gap-2">
+              <Dot on={on} />
+              {item}
+            </span>
+          );
+        })}
       </div>
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/55 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 lg:px-6 lg:py-4">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            {/* Icona con badge gradiente */}
+      <style jsx>{`
+        @keyframes marquee {
+          0% {
+            transform: translateX(0%);
+          }
+          100% {
+            transform: translateX(-100%);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Navbar() {
+  return (
+    <nav className="fixed top-0 w-full z-50">
+      <GlassPanel className="w-full bg-gradient-to-r from-indigo-50/35 via-white/10 to-pink-50/35 border-white/30 shadow-none">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <button
+            onClick={() => scrollTo('top')}
+            className="flex items-center gap-2 cursor-pointer group"
+            aria-label="Vai in cima"
+          >
             <div className="relative flex h-10 w-10 items-center justify-center">
-              <div
-                className="absolute inset-0 rounded-2xl opacity-90 shadow-glow"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-                }}
-              />
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-2xl bg-white/85 ring-1 ring-white/60">
-                <Image
-                  src="/branding/cerbero-logo.svg"
-                  alt="Cerbero AI logo"
-                  width={34}
-                  height={34}
-                  className="object-contain"
-                />
-              </div>
-            </div>
+  <div
+    className="absolute inset-0 rounded-2xl opacity-90 shadow-lg"
+    style={{ backgroundImage: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)' }}
+  />
+  <div className="relative flex h-9 w-9 items-center justify-center rounded-2xl bg-white/85 ring-1 ring-white/70">
+    <Image
+      src="/branding/cerbero-logo.svg"
+      alt="Cerbero AI logo"
+      width={30}
+      height={30}
+      className="object-contain"
+    />
+  </div>
+</div>
+            <span className="font-bold text-xl tracking-tight text-slate-900">
+              Cerbero<span className="text-indigo-600">.AI</span>
+            </span>
+          </button>
 
-            {/* Testo brand con gradiente */}
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-extrabold tracking-tight">
-                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Cerbero
-                </span>{' '}
-                <span
-                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-extrabold text-white"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-                  }}
-                >
-                  AI
-                </span>
-              </span>
-              <span className="text-[11px] text-slate-500">
-                Infrastruttura neurale · Non-custodial
-              </span>
-            </div>
-          </div>
-
-          {/* Nav desktop */}
-          <nav className="hidden items-center gap-8 text-xs text-slate-500 md:flex">
-            {navItems.map((item) => (
+          <div className="hidden md:flex gap-8 text-sm font-semibold text-slate-500">
+            {navItems.map((it) => (
               <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="uppercase tracking-[0.22em] transition-colors hover:text-slate-900"
+                key={it.id}
+                onClick={() => scrollTo(it.id)}
+                className="hover:text-indigo-600 transition"
               >
-                {item.label}
+                {it.label}
               </button>
             ))}
-
-            <Link
-              href="/login"
-              className="rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-600 transition hover:text-slate-900"
-            >
-              Accedi
-            </Link>
-
-            <Link
-              href="/signup"
-              className="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-glow transition hover:translate-y-[-1px] hover:brightness-110"
-              style={{
-                backgroundImage:
-                  'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-              }}
-            >
-              Attiva accesso
-            </Link>
-          </nav>
-
-          {/* Nav mobile */}
-          <div className="flex items-center gap-3 md:hidden">
-            <Link
-              href="/login"
-              className="rounded-full border border-slate-200 bg-white/60 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700"
-            >
-              Accedi
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-glow"
-              style={{
-                backgroundImage:
-                  'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-              }}
-            >
-              Attiva
-            </Link>
           </div>
+
+          <Link
+            href="/login"
+            className="bg-slate-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-900/10 active:scale-95"
+          >
+            Accesso Dashboard
+          </Link>
         </div>
-      </header>
-
-      {/* CONTENUTO */}
-      <main className="relative z-10 mx-auto flex max-w-6xl flex-col gap-28 px-4 pb-20 pt-10 lg:px-6 lg:pt-16 lg:pb-24">
-        {/* HERO */}
-        <HeroCoscienzaSection />
-
-        {/* COSCIENZA (blocco full width separato) */}
-        <CoscienzaSection />
-
-        {/* PROTOCOLLO (due canali) */}
-        <NeuralSeparator label="PROTOCOLLO" />
-        <ProtocolloDueCanaliSection />
-
-        {/* ONBOARDING */}
-        <NeuralSeparator label="ONBOARDING" />
-        <OnboardingSection />
-
-        {/* PRICING */}
-        <NeuralSeparator label="PRICING" />
-        <PricingSection />
-
-        {/* CONTROLLO */}
-        <NeuralSeparator label="CONTROLLO" />
-        <ControlloSection />
-
-        {/* COMING NEXT */}
-        <NeuralSeparator label="COMING NEXT" />
-        <ComingNextSection />
-
-        {/* FOOTER */}
-        <SiteFooter />
-      </main>
-    </div>
+      </GlassPanel>
+    </nav>
   );
 }
 
-/* --------------------------- NEURAL SEPARATOR ---------------------------- */
-
-type NeuralSeparatorProps = { label?: string };
-
-function NeuralSeparator({ label }: NeuralSeparatorProps) {
+function Hero() {
   return (
-    <div className="relative mt-2 flex items-center justify-center">
-      <div className="h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-slate-300/70 to-transparent" />
-      {label && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex items-center gap-2 rounded-full border border-white/70 bg-white/65 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 backdrop-blur-md shadow-sm">
-            <span className="h-1 w-6 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-            {label}
+    <section id="top" className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center relative">
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-widest mb-8 shadow-sm">
+        <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+        Protocollo di Accumulo Istituzionale
+      </div>
+
+      <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 leading-[1.1] mb-8 tracking-tight">
+        Trasforma il tuo conto MT5
+        <br />
+        <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          in un Hedge Fund.
+        </span>
+      </h1>
+
+      <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+        L’infrastruttura neurale che si collega direttamente al tuo broker.
+        <strong> 20 modelli</strong> lavorano simultaneamente sul tuo conto per generare alpha.
+        Tu mantieni i fondi, noi forniamo l’esecuzione.
+      </p>
+
+      <div className="flex flex-col md:flex-row justify-center gap-4 mb-20">
+        <Link
+          href="/signup"
+          className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 transition transform hover:-translate-y-1 flex items-center justify-center gap-2"
+        >
+          Collega Broker
+        </Link>
+        <button
+          onClick={() => scrollTo('filosofia')}
+          className="bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition"
+        >
+          Scopri la Tecnologia
+        </button>
+      </div>
+
+      
+      {/* Video placeholder */}
+      <div className="max-w-5xl mx-auto mb-16 relative group">
+        <div className="absolute inset-0 bg-indigo-500 blur-[60px] opacity-20 rounded-full group-hover:opacity-30 transition-opacity duration-500" />
+
+        <GlassPanel className="relative rounded-[32px] overflow-hidden border border-white/50 shadow-[0_0_60px_-15px_rgba(99,102,241,0.3)]">
+          {/* 16:9 desktop */}
+          <div className="relative hidden md:block aspect-video">
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+            >
+              <source src="/videos/hero-16-9.mp4" type="video/mp4" />
+            </video>
+          </div>
+
+          {/* 9:16 mobile */}
+          <div className="relative md:hidden aspect-[9/12]">
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+            >
+              <source src="/videos/hero-9-16.mp4" type="video/mp4" />
+            </video>
+          </div>
+
+          {/* Overlay CTA (NO patina scura) */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform">
+                <span className="text-white text-3xl translate-x-[1px]">▶</span>
+              </div>
+              <p className="text-white/80 font-bold tracking-widest text-xs uppercase">
+                Guarda Cerbero in Azione
+              </p>
+            </div>
+          </div>
+        </GlassPanel>
+      </div>
+
+      {/* Concept card */}
+      <GlassPanel className="max-w-3xl mx-auto p-8 rounded-[32px] border border-white/60 shadow-lg relative overflow-hidden">
+        <div className="flex justify-between items-end mb-6">
+          <div className="text-left">
+            <div className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-1">
+              Interesse Composto
+            </div>
+            <div className="text-2xl font-bold text-slate-900">
+              La Potenza della Crescita Esponenziale
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase">
+              Attivo
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
 
-/* ------------------------ HERO + VIDEO (FIXED) --------------------------- */
-
-function HeroCoscienzaSection() {
-  return (
-    <motion.section
-      id="protocollo"
-      variants={sectionContainer}
-      initial="hidden"
-      animate="visible"
-      className="grid gap-12 lg:grid-cols-[1.05fr_minmax(0,0.95fr)] lg:items-start"
-    >
-      {/* Copy */}
-      <div className="space-y-7">
-        <motion.div
-          variants={fadeInUp}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="space-y-4"
-        >
-          <h1 className="text-balance text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            <span className="block text-slate-900">CERBERO</span>
-            <span className="block bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              ISTITUTO DI FINANZA ARTIFICIALE
-            </span>
-          </h1>
-
-          <p className="max-w-xl text-base font-semibold text-slate-600">
-            Un’infrastruttura neurale che coordina <span className="text-slate-900">decisioni</span> ed{' '}
-            <span className="text-slate-900">esecuzione</span> su due canali operativi (DeFi e CeFi), con fondi sempre
-            sotto il controllo dell’utente.
-          </p>
-        </motion.div>
-
-        {/* Chips */}
-        <motion.div
-          variants={fadeInUp}
-          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.04 }}
-          className="flex flex-wrap gap-2"
-        >
-          {[
-            { label: 'NON-CUSTODIAL', glow: 'shadow-[0_0_22px_rgba(99,102,241,0.18)]' },
-            { label: 'ICT / SMC', glow: 'shadow-[0_0_22px_rgba(236,72,153,0.14)]' },
-            { label: 'RISK ENGINE', glow: 'shadow-[0_0_22px_rgba(168,85,247,0.14)]' },
-            { label: 'LOG TRACCIABILE', glow: 'shadow-[0_0_22px_rgba(6,182,212,0.14)]' },
-          ].map((c) => (
-            <span
-              key={c.label}
-              className={`rounded-full border border-white/70 bg-white/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600 backdrop-blur ${c.glow}`}
-            >
-              {c.label}
-            </span>
+        <div className="h-40 flex items-end justify-between gap-2 mb-8 opacity-90 px-4">
+          {[10, 12, 15, 14, 18, 22, 26, 30, 35, 42, 50, 60, 72, 85, 100].map((h, i) => (
+            <div
+              key={i}
+              className="w-full bg-gradient-to-t from-indigo-300 to-indigo-600 rounded-t-md hover:opacity-100 transition-opacity"
+              style={{ height: `${h}%`, opacity: 0.6 + i * 0.03 }}
+            />
           ))}
-        </motion.div>
-
-        {/* CTA */}
-        <motion.div
-          variants={fadeInUp}
-          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.07 }}
-          className="flex flex-wrap items-center gap-4"
-        >
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-            <Link
-              href="/signup"
-              className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-glow transition hover:translate-y-[-1px] hover:brightness-110"
-              style={{
-                backgroundImage:
-                  'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-              }}
-            >
-              Attiva accesso
-            </Link>
-          </motion.div>
-
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => scrollToSection('onboarding')}
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/60 px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-700 transition hover:bg-white"
-          >
-            Vedi il protocollo
-          </motion.button>
-        </motion.div>
-      </div>
-
-      {/* Video Hero (colonna destra, più “alto” e compatto) */}
-      <motion.div
-        variants={fadeIn}
-        transition={{ duration: 0.75, ease: 'easeOut', delay: 0.05 }}
-        className="relative lg:self-start"
-      >
-        <div className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/50 shadow-glass lg:max-w-[520px] lg:ml-auto">
-          <video className="block w-full md:hidden aspect-[9/12] object-cover" autoPlay loop muted playsInline>
-            <source src="/videos/hero-9-16.mp4" type="video/mp4" />
-          </video>
-
-          <video className="hidden w-full md:block aspect-[16/10] object-cover" autoPlay loop muted playsInline>
-            <source src="/videos/hero-16-9.mp4" type="video/mp4" />
-          </video>
-
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/70 via-white/10 to-transparent" />
-
-          <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 backdrop-blur-md shadow-sm">
-            <span className="inline-block h-1 w-8 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400" />
-            Telemetry preview
-          </div>
         </div>
-      </motion.div>
-    </motion.section>
+
+        <div className="pt-6 border-t border-slate-200/60 text-center">
+          <p className="text-sm text-slate-500 italic font-medium">
+            “L’interesse composto è l’ottava meraviglia del mondo.”
+          </p>
+          <p className="text-xs text-slate-400 font-bold mt-2 uppercase tracking-widest">— Albert Einstein</p>
+        </div>
+      </GlassPanel>
+    </section>
   );
 }
 
-/* ------------------------------ COSCIENZA -------------------------------- */
+function ThreeHeads() {
+  return (
+    <section id="filosofia" className="py-24 px-6 max-w-7xl mx-auto">
+      <div className="text-center mb-16 max-w-3xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-6">
+          Coscienza: Il Consenso a 3 Teste
+        </h2>
+        <p className="text-slate-600 text-lg leading-relaxed">
+          Cerbero usa logiche istituzionali <strong>SMC (Smart Money Concepts)</strong> e <strong>ICT</strong> per
+          leggere struttura e liquidità, con un risk engine che ha diritto di veto.
+        </p>
+      </div>
 
-function CoscienzaSection() {
-  const items = [
-    {
-      n: '01',
-      title: 'ANALISTA STRUTTURALE',
-      desc:
-        'Legge la geometria del mercato: price action, liquidità, order blocks, inefficienze (FVG). Identifica zone istituzionali.',
-      icon: '🧩',
-      grad: 'from-violet-600 via-indigo-600 to-blue-500',
-      glow: 'shadow-[0_0_30px_rgba(99,102,241,0.35)]',
-    },
-    {
-      n: '02',
-      title: 'GESTORE CONTESTUALE',
-      desc:
-        'Valuta “meteo” finanziario: volatilità, sessioni (Londra/NY), news macro ad alto impatto. Se il contesto è instabile, blocca.',
-      icon: '🌐',
-      grad: 'from-blue-600 via-cyan-500 to-sky-400',
-      glow: 'shadow-[0_0_30px_rgba(6,182,212,0.35)]',
-    },
-    {
-      n: '03',
-      title: 'GARANTE DEL RISCHIO',
-      desc:
-        'Calcola size, stop loss strutturale e R:R. Ha diritto di veto: se è matematicamente svantaggioso, si scarta.',
-      icon: '🛡️',
-      grad: 'from-orange-500 via-rose-500 to-red-500',
-      glow: 'shadow-[0_0_30px_rgba(244,63,94,0.35)]',
-    },
+      <div className="grid md:grid-cols-3 gap-8">
+        <GlassCard className="p-8">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl mb-6 shadow-sm">
+            <i className="ph-fill ph-trend-up"></i>
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">L’Analista</h3>
+          <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-4">
+            Struttura & Liquidità (SMC)
+          </p>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Scansiona order blocks e zone di liquidità. Non guarda “indicatori retail”: guarda dove si muovono i grandi
+            player.
+          </p>
+        </GlassCard>
+
+        <GlassCard className="p-8">
+          <div className="w-14 h-14 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-2xl mb-6 shadow-sm">
+            🌍
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">Il Gestore</h3>
+          <p className="text-xs font-bold text-cyan-600 uppercase tracking-widest mb-4">Contesto & Macro</p>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Analizza sessioni (Londra/NY) e contesto macro. Se c’è volatilità anomala o news ad alto impatto,
+            <strong> blocca l’operatività</strong>.
+          </p>
+        </GlassCard>
+
+        <GlassCard className="p-8">
+          <div className="w-14 h-14 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center text-2xl mb-6 shadow-sm">
+            <i className="ph-fill ph-shield-check"></i>
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">Il Garante</h3>
+          <p className="text-xs font-bold text-pink-600 uppercase tracking-widest mb-4">Matematica & Rischio</p>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Calcola size e rischio in base al capitale. La regola: prima proteggere il capitale, poi cercare profitto.
+          </p>
+        </GlassCard>
+      </div>
+    </section>
+  );
+}
+
+function AssetMatrix() {
+  const forex = [
+    'EUR/USD',
+    'GBP/USD',
+    'USD/JPY',
+    'AUD/USD',
+    'USD/CAD',
+    'USD/CHF',
+    'AUD/JPY',
+    'GBP/JPY',
+    'CAD/JPY',
+    'EUR/JPY',
   ];
+  const crypto = ['BTC/USD', 'ETH/USD'];
+  const indices = ['NASDAQ', 'USA 500', 'USATECH', 'GERMANIA40', 'NIKKEI225'];
+  const commodities = ['GOLD (XAU)', 'SILVER (XAG)', 'OIL (WTI)'];
 
   return (
-    <motion.section
-      variants={sectionContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.25 }}
-      className="space-y-10"
-    >
-      <motion.div variants={fadeInUp} className="text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/65 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 backdrop-blur shadow-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.55)]" />
-          COSCIENZA
+    <section id="matrix" className="py-20 px-6 max-w-7xl mx-auto">
+      <GlassPanel className="rounded-[40px] p-10 md:p-16 border border-white/60 relative overflow-hidden">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-600">
+              20 Modelli Neurali.
+            </span>{' '}
+            20 Asset.
+          </h2>
+          <p className="text-slate-500">
+            Portafoglio diversificato gestito automaticamente. Ogni asset ha la sua rete neurale dedicata.
+          </p>
         </div>
 
-        <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-          COSCIENZA: IL CONSENSO A 3 TESTE
-        </h2>
-
-        <p className="mx-auto mt-3 max-w-3xl text-sm sm:text-base font-semibold text-slate-600">
-          Cerbero non è un singolo algoritmo. È un sistema a consenso: l’ordine parte solo quando{' '}
-          <span className="text-slate-900">struttura</span>, <span className="text-slate-900">contesto</span> e{' '}
-          <span className="text-slate-900">rischio</span> convergono. Se una testa non è d’accordo, l’esecuzione si ferma.
-        </p>
-      </motion.div>
-
-      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-3">
-        {items.map((it) => (
-          <motion.div
-            key={it.n}
-            whileHover={{ y: -6, scale: 1.01 }}
-            animate={{
-              boxShadow: [
-                '0 0 0 rgba(0,0,0,0)',
-                '0 0 40px rgba(99,102,241,0.12)',
-                '0 0 0 rgba(0,0,0,0)',
-              ],
-            }}
-            transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut' }}
-            className={`relative overflow-hidden rounded-3xl p-[1px] ${it.glow}`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${it.grad}`} />
-
-            <div className="relative rounded-3xl p-8 text-white bg-slate-950/20 backdrop-blur-xl aspect-square flex flex-col justify-between">
-              <div className="flex items-start justify-between">
-                <div className="text-5xl leading-none">{it.icon}</div>
-                <div className="h-10 w-10 rounded-2xl bg-white/10 ring-1 ring-white/20" />
-              </div>
-
-              <div className="mt-6">
-                <div className="text-[12px] font-extrabold uppercase tracking-[0.22em] text-white/90">
-                  {it.n} · {it.title}
-                </div>
-                <p className="mt-4 text-sm sm:text-base font-semibold leading-relaxed text-white/85">
-                  {it.desc}
-                </p>
-              </div>
-
-              <div className="mt-6 h-1 w-full rounded-full bg-gradient-to-r from-white/70 to-white/0" />
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4 text-indigo-700">
+              <span className="text-lg"><i className="ph-fill ph-globe-hemisphere-west"></i></span>
+              <h4 className="font-bold text-sm uppercase tracking-wider">Forex Majors</h4>
             </div>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-center gap-2">
-        <span className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600 backdrop-blur">
-          ICT / SMC
-        </span>
-        <span className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600 backdrop-blur">
-          VETO RISCHIO
-        </span>
-      </motion.div>
-
-      <motion.div variants={fadeInUp} className="glass-panel rounded-3xl p-6">
-        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">PERCHÉ ICT / SMC</div>
-        <p className="mt-2 text-sm font-semibold text-slate-600">
-          Non “prevede” con indicatori retail in ritardo. Traccia le impronte dei grandi player e si posiziona solo quando
-          struttura, contesto e rischio sono coerenti.
-        </p>
-      </motion.div>
-    </motion.section>
-  );
-}
-
-/* -------------------------- PROTOCOLLO: DUE CANALI ----------------------- */
-
-function ProtocolloDueCanaliSection() {
-  return (
-    <motion.section
-      variants={sectionContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.35 }}
-      className="space-y-8"
-    >
-      <motion.div variants={fadeInUp} className="text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/65 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500 backdrop-blur shadow-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]" />
-          PROTOCOLLO OPERATIVO
-        </div>
-
-        <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-          <span className="text-slate-900">Un solo Cervello.</span>{' '}
-          <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-            Due Canali.
-          </span>
-        </h2>
-      </motion.div>
-
-      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-2">
-        {/* DeFi */}
-        <div className="glass-panel relative overflow-hidden rounded-3xl p-6">
-          <div className="pointer-events-none absolute -left-24 -top-24 h-56 w-56 rounded-full bg-pink-200/60 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-purple-200/55 blur-3xl" />
-
-          <div className="relative space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-xl font-extrabold text-slate-900">DeFi Mode</div>
-                <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.22em] text-pink-600/80">
-                  Trading Account on-chain
-                </div>
-              </div>
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-glow" />
+            <div className="flex flex-wrap gap-2">
+              {forex.map((s) => (
+                <Pill key={s} tone="indigo">
+                  <span className="text-xs font-bold">{s}</span>
+                </Pill>
+              ))}
             </div>
+          </div>
 
-            <p className="text-sm font-semibold leading-relaxed text-slate-600">
-              Viene creato automaticamente il tuo <span className="text-slate-900">Trading Account on-chain personale</span>.
-              Depositi e prelevi quando vuoi. Un wallet esterno serve solo per il prelievo/settlement.
-            </p>
+          <div>
+            <div className="flex items-center gap-2 mb-4 text-emerald-700">
+              <span className="text-lg">🏙️</span>
+              <h4 className="font-bold text-sm uppercase tracking-wider">Indici Globali</h4>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {indices.map((s) => (
+                <Pill key={s} tone="emerald">
+                  <span className="text-xs font-bold">{s}</span>
+                </Pill>
+              ))}
+            </div>
+          </div>
 
-            <div className="h-1 w-full rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-transparent" />
+          <div>
+            <div className="flex items-center gap-2 mb-4 text-amber-600">
+              <span className="text-lg">⛽</span>
+              <h4 className="font-bold text-sm uppercase tracking-wider">Materie Prime</h4>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {commodities.map((s) => (
+                <Pill key={s} tone="amber">
+                  <span className="text-xs font-bold">{s}</span>
+                </Pill>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-4 text-orange-600">
+              <span className="text-lg">₿</span>
+              <h4 className="font-bold text-sm uppercase tracking-wider">Crypto Blue Chips</h4>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {crypto.map((s) => (
+                <Pill key={s} tone="orange">
+                  <span className="text-xs font-bold">{s}</span>
+                </Pill>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* CeFi */}
-        <div className="glass-panel relative overflow-hidden rounded-3xl p-6">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-cyan-200/60 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-emerald-200/40 blur-3xl" />
-
-          <div className="relative space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-xl font-extrabold text-slate-900">CeFi Mode</div>
-                <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-700/80">
-                  Broker connect API
-                </div>
-              </div>
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-500 shadow-glow" />
-            </div>
-
-            <p className="text-sm font-semibold leading-relaxed text-slate-600">
-              Colleghi il tuo conto broker MT5 via API. Permessi di <span className="text-slate-900">sola esecuzione</span>:
-              nessun prelievo, nessun bonifico possibile.
-            </p>
-
-            <div className="h-1 w-full rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-transparent" />
-          </div>
-        </div>
-      </motion.div>
-    </motion.section>
-  );
-}
-
-/* ----------------------------- ONBOARDING -------------------------------- */
-
-function OnboardingSection() {
-  return (
-    <motion.section
-      id="onboarding"
-      variants={sectionContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.35 }}
-      className="space-y-6"
-    >
-      <motion.div variants={fadeInUp} className="flex flex-col items-center text-center gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/65 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500 backdrop-blur shadow-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.55)]" />
-          ONBOARDING
-        </div>
-
-        <h3 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          ATTIVAZIONE IN 3 PASSAGGI.
-          <span className="block bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-            SEMPLICE. GUIDATA. CHIARA.
+        <div className="mt-12 pt-8 border-t border-slate-200 text-center">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse" />
+            Stocks (Azioni) in fase di apprendimento… Coming Soon
           </span>
-        </h3>
-      </motion.div>
-
-      <motion.div variants={fadeInUp} className="glass-panel relative overflow-hidden rounded-3xl p-6">
-        <motion.div
-          className="pointer-events-none absolute inset-0"
-          animate={{ opacity: [0.35, 0.7, 0.35] }}
-          transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <div className="absolute -left-24 -top-24 h-64 w-64 rounded-full bg-pink-200/55 blur-3xl" />
-          <div className="absolute -right-24 top-10 h-64 w-64 rounded-full bg-cyan-200/55 blur-3xl" />
-          <div className="absolute bottom-[-120px] left-1/3 h-72 w-72 rounded-full bg-purple-200/55 blur-3xl" />
-        </motion.div>
-
-        <div className="relative grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-stretch">
-          <StepCard
-            n="01"
-            title="ACCESSO"
-            body="Crea un account e entri in dashboard. Vedi canali e parametri."
-            accent="from-cyan-500 to-indigo-500"
-          />
-
-          <ArrowConnector />
-
-          <StepCard
-            n="02"
-            title="CANALE OPERATIVO"
-            body={
-              <>
-                <span className="text-slate-900">DeFi:</span> creazione Trading Account on-chain personale. <br />
-                <span className="text-slate-900">CeFi:</span> connessione broker MT5 via API.
-              </>
-            }
-            accent="from-indigo-500 to-purple-500"
-          />
-
-          <ArrowConnector />
-
-          <StepCard
-            n="03"
-            title="AUTOPILOT"
-            body="Attivi il pilota. Cerbero opera in continuità solo entro i limiti definiti."
-            accent="from-emerald-500 to-cyan-500"
-          />
         </div>
-
-        <p className="relative mt-4 text-center text-[12px] font-semibold text-slate-500">
-          Una volta attivo, il sistema può operare 24/7 senza richiedere presenza costante dell’utente.
-        </p>
-      </motion.div>
-    </motion.section>
+      </GlassPanel>
+    </section>
   );
 }
 
-function ArrowConnector() {
+function OnboardingSteps() {
   return (
-    <div className="hidden lg:flex items-center justify-center">
-      <motion.div
-        className="h-10 w-10 rounded-full border border-white/70 bg-white/65 backdrop-blur shadow-sm"
-        animate={{
-          boxShadow: [
-            '0 8px 18px rgba(31,38,135,0.04)',
-            '0 14px 28px rgba(99,102,241,0.10)',
-            '0 8px 18px rgba(31,38,135,0.04)',
-          ],
-        }}
-        transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <div className="flex h-full w-full items-center justify-center text-slate-500">→</div>
-      </motion.div>
-    </div>
-  );
-}
-
-function StepCard({
-  n,
-  title,
-  body,
-  accent,
-}: {
-  n: string;
-  title: string;
-  body: React.ReactNode;
-  accent: string;
-}) {
-  return (
-    <div className="glass-card relative overflow-hidden rounded-2xl p-5">
-      <div className={`absolute left-0 top-0 h-1 w-full bg-gradient-to-r ${accent}`} />
-      <div className="flex items-center gap-3">
-        <div className="rounded-full border border-white/80 bg-white/70 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-600">
-          {n}
-        </div>
-        <div className="text-[12px] font-bold uppercase tracking-[0.22em] text-slate-600">{title}</div>
+    <section id="onboarding" className="py-24 px-6 max-w-7xl mx-auto">
+      <div className="text-center mb-16">
+        <h2 className="text-3xl font-bold text-slate-900 mb-4">Attivazione Rapida.</h2>
+        <p className="text-slate-500">Niente configurazioni complesse. Bastano 3 passaggi.</p>
       </div>
-      <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-600">{body}</div>
-    </div>
+
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="relative group">
+          <GlassCard className="p-10 rounded-[40px] text-center h-full">
+            <div className="w-20 h-20 mx-auto bg-indigo-50 rounded-full flex items-center justify-center text-3xl text-indigo-600 mb-6 shadow-sm group-hover:scale-110 transition-transform">
+              👤
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">1. Crea Account</h3>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Registrati alla dashboard ufficiale di Cerbero AI e attiva l’abbonamento.
+            </p>
+          </GlassCard>
+          <div className="absolute top-1/2 -right-6 w-12 h-0.5 bg-slate-200 hidden md:block" />
+        </div>
+
+        <div className="relative group">
+          <GlassCard className="p-10 rounded-[40px] text-center h-full border-indigo-200 shadow-xl">
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-3xl text-white mb-6 shadow-lg group-hover:scale-110 transition-transform">
+              <i className="ph-fill ph-plug"></i>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">2. Collega MT5</h3>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Inserisci le credenziali del tuo broker. Connessione criptata via MetaApi.
+            </p>
+          </GlassCard>
+          <div className="absolute top-1/2 -right-6 w-12 h-0.5 bg-slate-200 hidden md:block" />
+        </div>
+
+        <div className="relative group">
+          <GlassCard className="p-10 rounded-[40px] text-center h-full">
+            <div className="w-20 h-20 mx-auto bg-emerald-50 rounded-full flex items-center justify-center text-3xl text-emerald-600 mb-6 shadow-sm group-hover:scale-110 transition-transform">
+              <i className="ph-fill ph-rocket-launch"></i>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">3. Start Autopilot</h3>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Attiva l’interruttore. Cerbero gestisce l’operatività 24/7 entro i limiti di rischio.
+            </p>
+          </GlassCard>
+        </div>
+      </div>
+    </section>
   );
 }
 
-/* ------------------------------ PRICING ---------------------------------- */
-
-function PricingSection() {
+function TrustCenter() {
   return (
-    <motion.section
-      id="pricing"
-      variants={sectionContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.35 }}
-      className="space-y-7"
-    >
-      <motion.div variants={fadeInUp} className="text-center space-y-3">
-        <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          FLAT. TRASPARENTE.
-          <span className="block bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-            NESSUNA % SUI RISULTATI.
-          </span>
-        </h2>
-        <p className="mx-auto max-w-2xl text-sm font-semibold text-slate-600 sm:text-base">
-          Un abbonamento mensile per l’accesso all’infrastruttura Cerbero. Nessuna commissione variabile,
-          nessuna partecipazione ai risultati, nessuna custodia del capitale.
+    <section className="py-24 px-6 bg-slate-900 text-white rounded-[3rem] max-w-7xl mx-auto relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px]" />
+
+      <div className="relative z-10 text-center max-w-3xl mx-auto">
+        <h2 className="text-3xl font-bold mb-8">Non-Custodial. Per Davvero.</h2>
+        <p className="text-slate-400 mb-12 text-lg">
+          A differenza di fondi o piattaforme che “trattengono capitale”, noi non tocchiamo mai i tuoi soldi.
         </p>
-      </motion.div>
 
-      <motion.div variants={fadeInUp} className="mx-auto w-full max-w-md">
-        <div className="glass-panel relative overflow-hidden rounded-3xl p-7 shadow-glass">
-          <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-cyan-200/60 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-pink-200/55 blur-3xl" />
+        <div className="grid md:grid-cols-2 gap-8 text-left">
+          <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition">
+            <h4 className="font-bold text-lg mb-2 flex items-center gap-2">
+              <span className="text-emerald-400">🔒</span> Fondi al Sicuro
+            </h4>
+            <p className="text-sm text-slate-400">
+              I capitali rimangono sul tuo broker MT5. Cerbero ha solo permessi operativi (apertura/chiusura posizioni),
+              nessuna possibilità di prelievo.
+            </p>
+          </div>
 
-          <div className="relative">
-            <div className="mb-5 flex items-baseline justify-center gap-2">
-              <span className="text-5xl font-extrabold text-slate-900">99€</span>
-              <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">/ mese</span>
+          <div className="bg-white/5 p-8 rounded-3xl border border-white/10 hover:bg-white/10 transition">
+            <h4 className="font-bold text-lg mb-2 flex items-center gap-2">
+              <span className="text-emerald-400">📊</span> Allineamento Totale
+            </h4>
+            <p className="text-sm text-slate-400">
+              Siamo un software SaaS a canone fisso. 0% commissioni sui profitti e nessun incentivo a “spingere” rischio.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section id="pricing" className="py-24 px-6 max-w-4xl mx-auto text-center">
+      <div className="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">Membership</div>
+      <h2 className="text-4xl font-extrabold text-slate-900 mb-6">
+        Tecnologia Hedge Fund.
+        <br />
+        a portata di mano.
+      </h2>
+
+      <GlassPanel className="p-10 md:p-14 rounded-[3rem] mt-12 shadow-2xl border border-white/60 relative overflow-hidden bg-gradient-to-br from-white/90 to-indigo-50/50">
+        <div className="relative z-10">
+          <div className="inline-block px-4 py-1 bg-indigo-600 text-white rounded-full text-xs font-bold uppercase mb-6">
+            Flat Fee
+          </div>
+
+          <div className="text-7xl font-extrabold text-slate-900 mb-2 tracking-tight">
+            99€<span className="text-xl text-slate-500 font-medium tracking-normal">/mese</span>
+          </div>
+
+          <p className="text-slate-500 mb-10">Tutto incluso. Nessuna percentuale sui tuoi guadagni.</p>
+
+          <div className="flex flex-col gap-4 max-w-sm mx-auto mb-10 text-left">
+            {[
+              'Autotrading 24/7 su 20 Asset',
+              'Collegamento MT5 (qualsiasi Broker compatibile)',
+              '0% Commissioni sui Profitti',
+            ].map((t) => (
+              <div key={t} className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                  ✓
+                </div>
+                <span className="text-sm font-medium text-slate-700">{t}</span>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            href="/signup"
+            className="w-full md:w-auto inline-flex items-center justify-center bg-gradient-to-r from-slate-900 to-slate-800 text-white px-12 py-5 rounded-2xl font-bold hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
+          >
+            Attiva il Protocollo
+          </Link>
+
+          <p className="mt-6 text-xs text-slate-400">
+            Disdici in qualsiasi momento. Pagamento sicuro via Stripe.
+          </p>
+        </div>
+      </GlassPanel>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="py-12 border-t border-slate-200 bg-white/50 backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-6 text-center md:text-left">
+        <div className="grid md:grid-cols-4 gap-8">
+          <div className="col-span-2">
+            <div className="flex items-center gap-3 mb-4 justify-center md:justify-start">
+              <div className="relative flex h-10 w-10 items-center justify-center">
+                <div
+                  className="absolute inset-0 rounded-2xl opacity-90 shadow-lg"
+                  style={{ backgroundImage: 'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)' }}
+                />
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-2xl bg-white/85 ring-1 ring-white/70">
+                  <Image
+                    src="/branding/cerbero-logo.svg"
+                    alt="Cerbero AI logo"
+                    width={30}
+                    height={30}
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+              <span className="font-bold text-xl text-slate-900 block">Cerbero<span className="text-indigo-600">.AI</span></span>
             </div>
 
-            <ul className="mb-6 space-y-2 text-left text-sm font-semibold text-slate-700">
-              <li className="flex gap-2">
-                <span className="mt-0.5 text-slate-400">•</span>
-                <span>Accesso completo al protocollo e al risk engine.</span>
+            <p className="text-sm text-slate-500 max-w-xs mx-auto md:mx-0">
+              Software (SaaS) per l’automazione dell’esecuzione su piattaforme MT5. L’utente mantiene controllo e
+              responsabilità dei fondi.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-slate-900 mb-4 text-sm">Contatti</h4>
+            <ul className="space-y-2 text-xs text-slate-500">
+              <li>Supporto Tecnico</li>
+              <li>info@cerberoai.com</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-slate-900 mb-4 text-sm">Legale</h4>
+            <ul className="space-y-2 text-xs text-slate-500">
+              <li>
+                <Link href="/legal/privacy" className="hover:text-indigo-600 transition">
+                  Privacy Policy
+                </Link>
               </li>
-              <li className="flex gap-2">
-                <span className="mt-0.5 text-slate-400">•</span>
-                <span>Trading Account on-chain personale (canale DeFi).</span>
+              <li>
+                <Link href="/legal/terms" className="hover:text-indigo-600 transition">
+                  Termini di Servizio
+                </Link>
               </li>
-              <li className="flex gap-2">
-                <span className="mt-0.5 text-slate-400">•</span>
-                <span>Connessione broker via API (canale CeFi).</span>
+              <li>
+                <Link href="/legal/cookies" className="hover:text-indigo-600 transition">
+                  Cookie
+                </Link>
               </li>
-              <li className="flex gap-2">
-                <span className="mt-0.5 text-slate-400">•</span>
-                <span>Log: tracciabilità decisioni ed esecuzioni.</span>
+              <li>
+                <Link href="/legal/risk" className="hover:text-indigo-600 transition">
+                  Risk Disclosure
+                </Link>
               </li>
             </ul>
-
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Link
-                href="/signup"
-                className="inline-flex w-full items-center justify-center rounded-2xl px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-glow transition hover:translate-y-[-1px] hover:brightness-110"
-                style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #6366f1, #a855f7, #ec4899)' }}
-              >
-                Attiva l’accesso
-              </Link>
-            </motion.div>
-
-            <p className="mt-3 text-center text-[11px] font-semibold text-slate-500">
-              Pagamento gestito tramite Stripe. Dopo l’attivazione vieni portato nella dashboard.
-            </p>
-
-            <p className="mt-6 text-center text-[11px] font-semibold text-slate-400">
-              Servizio tecnologico. Nessuna consulenza finanziaria. Nessuna garanzia di risultato. Il capitale resta
-              dell’utente.
-            </p>
           </div>
         </div>
-      </motion.div>
-    </motion.section>
-  );
-}
 
-/* ------------------------------ CONTROLLO -------------------------------- */
-
-function ControlloSection() {
-  return (
-    <motion.section
-      id="controllo"
-      variants={sectionContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.35 }}
-      className="space-y-7"
-    >
-      <motion.div variants={fadeInUp} className="space-y-3">
-        <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50/70 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-700 backdrop-blur">
-          CONTROLLO & SICUREZZA
-        </div>
-
-        <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          CONTROLLO OPERATIVO.
-          <span className="block bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">
-            NON CUSTODIAL.
-          </span>
-        </h2>
-
-        <p className="max-w-2xl text-sm font-semibold text-slate-600 sm:text-base">
-          Cerbero è progettato per essere controllabile. Non richiede fiducia cieca: opera entro regole esplicite e lascia
-          tracce consultabili.
-        </p>
-      </motion.div>
-
-      {/* FULL WIDTH: 3 CARD ORIZZONTALI (niente card destra “Protezione attive”) */}
-      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-3">
-        <div className="glass-panel rounded-3xl p-6">
-          <Bullet title="NON CUSTODIA" tone="cyan">
-            Cerbero non detiene capitale e non può trasferire fondi verso l’esterno.
-          </Bullet>
-        </div>
-
-        <div className="glass-panel rounded-3xl p-6">
-          <Bullet title="RISCHIO CALCOLATO" tone="fuchsia">
-            Stop loss strutturale, controllo R:R e protezioni su soglie critiche prima di ogni esecuzione.
-          </Bullet>
-        </div>
-
-        <div className="glass-panel rounded-3xl p-6">
-          <Bullet title="STORICO OPERAZIONI" tone="emerald">
-            Ogni azione e intenzione viene registrata: non una black box, ma un flusso tracciabile e consultabile.
-          </Bullet>
-        </div>
-      </motion.div>
-    </motion.section>
-  );
-}
-
-function Bullet({
-  title,
-  tone,
-  children,
-}: {
-  title: string;
-  tone: 'cyan' | 'fuchsia' | 'emerald';
-  children: React.ReactNode;
-}) {
-  const toneClass =
-    tone === 'cyan'
-      ? 'text-cyan-700'
-      : tone === 'fuchsia'
-      ? 'text-pink-700'
-      : 'text-emerald-700';
-
-  return (
-    <div className="space-y-2">
-      <div className={`text-[12px] font-bold uppercase tracking-[0.22em] ${toneClass}`}>{title}</div>
-      <div className="text-sm font-semibold text-slate-600">{children}</div>
-    </div>
-  );
-}
-
-/* ----------------------------- COMING NEXT ------------------------------- */
-
-function ComingNextSection() {
-  return (
-    <motion.section
-      id="coming"
-      variants={sectionContainer}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.35 }}
-      className="space-y-6"
-    >
-      <motion.div variants={fadeInUp} className="space-y-3">
-        <div className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50/70 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-purple-700 backdrop-blur">
-          EVOLUZIONE DELL’INFRASTRUTTURA
-        </div>
-
-        <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          CHIUDERE IL CICLO:
-          <span className="block bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-            DAL CAPITALE ALL’USO REALE.
-          </span>
-        </h2>
-      </motion.div>
-
-      <motion.div variants={fadeInUp} className="max-w-3xl space-y-4">
-        <p className="text-sm font-semibold leading-relaxed text-slate-600 sm:text-base">
-          Cerbero è progettato per collegare <span className="text-slate-900">esecuzione finanziaria</span> e{' '}
-          <span className="text-slate-900">utilizzo del capitale</span>. L’integrazione di on-ramp, off-ramp e strumenti di
-          accesso è parte dell’evoluzione del protocollo, mantenendo invariati i principi: controllo dell’utente,
-          tracciabilità e limiti.
-        </p>
-
-        <div className="glass-panel rounded-3xl p-6">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
-            IN VALUTAZIONE / QUANDO DISPONIBILE
-          </div>
-
-          <ul className="mt-3 space-y-2 text-sm font-semibold text-slate-700">
-            <li>
-              • <span className="text-cyan-700">On-ramp</span> e <span className="text-pink-700">off-ramp</span>{' '}
-              integrati (accesso e uscita semplificati).
-            </li>
-            <li>
-              • <span className="text-purple-700">Identità operativa</span> e coordinate di conto per flussi più lineari.
-            </li>
-            <li>
-              • <span className="text-emerald-700">Strumenti di spesa</span> collegati al capitale, senza cambiare i
-              principi non-custodial.
-            </li>
-          </ul>
-
-          <p className="mt-4 text-[11px] font-semibold text-slate-500">
-            Nota: questa sezione descrive una direzione del prodotto e non costituisce impegno, promessa o tempistica.
+        <div className="mt-12 pt-8 border-t border-slate-200 text-[10px] text-slate-400 leading-relaxed">
+          <p>
+            DISCLAIMER: Cerbero AI non offre consulenza finanziaria personalizzata. Il servizio è fornito esclusivamente
+            come infrastruttura tecnologica (SaaS) per l’automazione dell’esecuzione. Il trading comporta rischi
+            significativi e può comportare la perdita del capitale. Le performance passate non sono garanzia di risultati
+            futuri.
           </p>
-        </div>
-      </motion.div>
-    </motion.section>
-  );
-}
-
-/* -------------------------------- FOOTER -------------------------------- */
-
-function SiteFooter() {
-  return (
-    <footer className="mt-10 border-t border-slate-200/70 bg-white/40 pt-8 pb-6 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row md:items-start">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center">
-            <div
-              className="absolute inset-0 rounded-2xl opacity-90 shadow-glow"
-              style={{
-                backgroundImage:
-                  'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-              }}
-            />
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-2xl bg-white/85 ring-1 ring-white/60">
-              <Image
-                src="/branding/cerbero-logo.svg"
-                alt="Cerbero AI logo"
-                width={34}
-                height={34}
-                className="object-contain"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-extrabold tracking-tight">
-              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Cerbero
-              </span>{' '}
-              <span
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-extrabold text-white"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #06b6d4)',
-                }}
-              >
-                AI
-              </span>
-            </span>
-            <span className="text-[11px] font-semibold text-slate-500">
-              © 2025 Cerbero. All rights reserved.
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 md:items-end">
-          <div className="text-center text-[11px] font-semibold text-slate-500 md:text-right">
-            Servizio tecnologico. Nessuna custodia dei fondi. Nessuna consulenza finanziaria. Nessuna garanzia di
-            risultato.
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-4 text-[11px] font-semibold text-slate-500 md:justify-end">
-            <a href="/legal/privacy" className="transition hover:text-slate-900">
-              Privacy
-            </a>
-            <a href="/legal/terms" className="transition hover:text-slate-900">
-              Termini &amp; Condizioni
-            </a>
-            <a href="/legal/cookies" className="transition hover:text-slate-900">
-              Cookie
-            </a>
-          </div>
+          <p className="mt-2 text-center md:text-left">© {new Date().getFullYear()} Cerbero Technologies S.r.l.</p>
         </div>
       </div>
     </footer>
+  );
+}
+
+/* ----------------------------- page ----------------------------- */
+
+export default function HomePage() {
+  return (
+    <div className="font-sans antialiased selection:bg-indigo-500 selection:text-white text-slate-900">
+      <AuroraBackground />
+      <AssetTicker />
+      <Navbar />
+
+      <main className="relative">
+        <Hero />
+        <ThreeHeads />
+        <AssetMatrix />
+        <OnboardingSteps />
+        <TrustCenter />
+        <Pricing />
+        <Footer />
+      </main>
+    </div>
   );
 }
