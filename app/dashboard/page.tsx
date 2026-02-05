@@ -24,5 +24,5 @@ export default async function DashboardPage() {
   if (!ok) redirect(`/signup?email=${encodeURIComponent(email)}`);
 
   // Passiamo l'email al client (comodo per header/UI)
-  return <DashboardClient initialEmail={email} />;
+  return <DashboardClient />;
 }
