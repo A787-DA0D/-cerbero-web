@@ -65,7 +65,7 @@ export default function LoginPage() {
 
     setIsSending(true);
     try {
-      // 1) Pre-check: se NON è tenant -> redirect a signup (senza inviare magic link)
+      // 1) Pre-check: se NON è tenant -> redirect a signup (senza inviare email login)
       const chk = await fetch(`/api/tenant/exists?email=${encodeURIComponent(v)}`, {
         method: 'GET',
         headers: { 'cache-control': 'no-store' },
@@ -82,7 +82,7 @@ export default function LoginPage() {
         return;
       }
 
-      // 2) È tenant -> invio magic link
+      // 2) È tenant -> invio email login
       const res = await signIn('email', {
         email: v,
         redirect: false,
