@@ -5,286 +5,199 @@ import { isFounder } from "@/lib/founder";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
-
-// Endpoint (facoltativo) dove mandi le email, es. una tua Cloud Function
 const EMAIL_WEBHOOK_URL = process.env.EMAIL_WEBHOOK_URL || "";
 
-// Inizializza Stripe (apiVersion default)
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
-/**
- * Helper super semplice per notifiche email.
- * Tu potrai puntarlo a:
- *  - una tua Cloud Function
- *  - un servizio tipo Resend / Mailgun / ecc.
- */
 async function sendNotificationEmail(opts: {
   to: string;
   subject: string;
   text: string;
 }) {
-  if (!EMAIL_WEBHOOK_URL) {
-    console.warn(
-      "[Stripe Webhook] EMAIL_WEBHOOK_URL non configurata, skip email:",
-      opts
-    );
-    return;
-  }
-
+  if (!EMAIL_WEBHOOK_URL) return;
   try {
     await fetch(EMAIL_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(opts),
     });
-  } catch (err) {
-    console.error("[Stripe Webhook] errore invio email:", err);
+  } catch (e) {
+    console.error("[Stripe Webhook] email error", e);
   }
 }
 
 export async function POST(req: NextRequest) {
   if (!stripe || !STRIPE_WEBHOOK_SECRET) {
-    console.error("[Stripe Webhook] Stripe non configurato");
-    return NextResponse.json(
-      { error: "Stripe not configured" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
+  }
+
+  const body = await req.text();
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
   let event: Stripe.Event;
-
-  // 1) Raw body + firma
-  const body = await req.text();
-  const sig = req.headers.get("stripe-signature");
-
-  if (!sig) {
-    console.error("[Stripe Webhook] Missing stripe-signature header");
-    return NextResponse.json(
-      { error: "Missing stripe-signature" },
-      { status: 400 }
-    );
-  }
-
   try {
     event = stripe.webhooks.constructEvent(body, sig, STRIPE_WEBHOOK_SECRET);
-  } catch (err: any) {
-    console.error("[Stripe Webhook] Signature verification failed", err);
-    return NextResponse.json(
-      { error: `Webhook Error: ${err.message}` },
-      { status: 400 }
-    );
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 });
   }
 
   try {
     switch (event.type) {
-      /**
-       * 1) checkout.session.completed
-       *    → primo acquisto dell’abbonamento autopilot
-       *    → autopilot_enabled = true
-       */
+      /* ---------------------------------- */
+      /* checkout.session.completed         */
+      /* ---------------------------------- */
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // ✅ Email: prova tutti i campi possibili (anche per fixture Stripe CLI)
-        const customerEmail =
+        const email =
           session.customer_details?.email ||
           (session as any).customer_email ||
-          (session.metadata &&
-            (session.metadata["email"] as string | undefined)) ||
+          session.metadata?.email ||
           null;
 
-        // ✅ Customer ID: prova tutte le forme possibili
-        let stripeCustomerId: string | null = null;
+        let stripeCustomerId: string | null =
+          typeof session.customer === "string"
+            ? session.customer
+            : (session.customer as any)?.id ?? null;
 
-        if (typeof session.customer === "string") {
-          stripeCustomerId = session.customer;
-        } else if (session.customer && (session.customer as any).id) {
-          stripeCustomerId = (session.customer as any).id;
+        if (!stripeCustomerId && email) {
+          const c = await stripe.customers.create({ email });
+          stripeCustomerId = c.id;
         }
 
-        // ✅ Se ancora manca, prova a recuperare la session "espansa"
-        if (!stripeCustomerId) {
-          try {
-            const full = await stripe.checkout.sessions.retrieve(session.id, {
-              expand: ["customer"],
-            });
+        if (!email || !stripeCustomerId) break;
 
-            if (typeof full.customer === "string") {
-              stripeCustomerId = full.customer;
-            } else if (full.customer && (full.customer as any).id) {
-              stripeCustomerId = (full.customer as any).id;
-            }
-          } catch (e) {
-            console.warn(
-              "[Stripe Webhook] retrieve checkout session failed",
-              session.id,
-              e
-            );
+        let subId: string | null = null;
+        let subStatus: string | null = null;
+        let periodEnd: Date | null = null;
+        let planCode: string | null = null;
+
+        const sid = (session as any).subscription;
+        if (typeof sid === "string") {
+          const sub = await stripe.subscriptions.retrieve(sid);
+          subId = sid;
+          subStatus = sub.status;
+          if (typeof (sub as any).current_period_end === "number") {
+            periodEnd = new Date((sub as any).current_period_end * 1000);
           }
-        }
-
-        // ✅ Se ancora non c'è customer id (fixture), creiamolo noi e lo agganciamo alla sessione
-        if (!stripeCustomerId && customerEmail) {
-          try {
-            const created = await stripe.customers.create({
-              email: customerEmail,
-            });
-            stripeCustomerId = created.id;
-
-            console.log(
-              "[Stripe Webhook] customer mancante in session → creato customer",
-              {
-                email: customerEmail,
-                stripeCustomerId,
-                sessionId: session.id,
-              }
-            );
-          } catch (e) {
-            console.warn("[Stripe Webhook] creazione customer fallita", e);
-          }
-        }
-
-        if (!customerEmail || !stripeCustomerId) {
-          console.warn(
-            "[Stripe Webhook] checkout.session.completed senza email o customer id",
-            { customerEmail, stripeCustomerId, sessionId: session.id }
-          );
-          break;
+          planCode = (sub as any).items?.data?.[0]?.price?.id ?? null;
         }
 
         await db.query(
           `
-          INSERT INTO tenants (email, stripe_customer_id, autopilot_enabled)
-          VALUES ($1, $2, true)
+          INSERT INTO tenants
+            (email, stripe_customer_id, stripe_subscription_id,
+             subscription_status, current_period_end, plan_code, autopilot_enabled)
+          VALUES ($1,$2,$3,$4,$5,$6,true)
           ON CONFLICT (email) DO UPDATE
             SET stripe_customer_id = EXCLUDED.stripe_customer_id,
+                stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+                subscription_status = EXCLUDED.subscription_status,
+                current_period_end = EXCLUDED.current_period_end,
+                plan_code = EXCLUDED.plan_code,
                 autopilot_enabled = true;
-        `,
-          [customerEmail, stripeCustomerId]
+          `,
+          [email, stripeCustomerId, subId, subStatus, periodEnd, planCode]
         );
 
-        console.log(
-          "[Stripe Webhook] checkout.session.completed → autopilot_enabled = true",
-          { email: customerEmail, stripeCustomerId, sessionId: session.id }
-        );
-
-        // email di benvenuto (opzionale)
         await sendNotificationEmail({
-          to: customerEmail,
+          to: email,
           subject: "Cerbero AI – Autotrading attivato",
-          text:
-            "Grazie per aver attivato l'abbonamento Cerbero Autopilot. " +
-            "Da ora puoi accendere o spegnere l'autotrading dalla tua dashboard.",
+          text: "Il tuo abbonamento Cerbero Autopilot è attivo.",
         });
 
         break;
       }
 
-      /**
-       * 2) invoice.upcoming
-       *    → reminder “sta per rinnovarsi”
-       */
+      /* ---------------------------------- */
+      /* invoice.upcoming                   */
+      /* ---------------------------------- */
       case "invoice.upcoming": {
         const invoice = event.data.object as Stripe.Invoice;
 
-        // ✅ In typings Stripe: customer_email esiste.
-        // Alcune volte l'email non è presente: in quel caso potresti cercarla nel DB via customer id.
-        const customerEmail = invoice.customer_email || null;
-
-        if (!customerEmail) {
-          console.log(
-            "[Stripe Webhook] invoice.upcoming senza customer_email, skip reminder"
-          );
-          break;
-        }
-
-        await sendNotificationEmail({
-          to: customerEmail,
-          subject: "Cerbero AI – Il tuo abbonamento sta per rinnovarsi",
-          text:
-            "Il tuo abbonamento Cerbero Autopilot sta per rinnovarsi automaticamente. " +
-            "Se non desideri il rinnovo, puoi gestire il piano dal tuo account Stripe / Cerbero.",
-        });
-
-        console.log("[Stripe Webhook] invoice.upcoming → reminder inviato", {
-          email: customerEmail,
-        });
-
-        break;
-      }
-
-      /**
-       * 3) invoice.payment_failed
-       *    → rinnovo fallito: spegniamo autopilot e mandiamo email
-       */
-      case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-
+        let email = invoice.customer_email || null;
         const stripeCustomerId =
           typeof invoice.customer === "string"
             ? invoice.customer
             : (invoice.customer as any)?.id;
 
-        const customerEmail = invoice.customer_email || null;
-
-        if (stripeCustomerId) {
-          // trova email dal DB così possiamo applicare whitelist founder
-          const tRes = await db.query(
-            `SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1;`,
+        if (!email && stripeCustomerId) {
+          const r = await db.query(
+            "SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1",
             [stripeCustomerId]
           );
-          const email = (tRes.rowCount ? (tRes.rows[0].email as string) : "")
-            .toLowerCase()
-            .trim();
+          email = r.rowCount ? r.rows[0].email : null;
+        }
 
-          if (isFounder(email)) {
-            console.log("[Stripe Webhook] founder bypass: keep autopilot_enabled", {
-              email,
-              stripeCustomerId,
-              event: "invoice.payment_failed",
-            });
-            break;
-          }
+        if (!email && stripeCustomerId) {
+          const c = await stripe.customers.retrieve(stripeCustomerId);
+          email = (c as any)?.email ?? null;
+        }
 
+        if (!email) break;
+
+        await sendNotificationEmail({
+          to: email,
+          subject: "Cerbero AI – Rinnovo imminente",
+          text: "Il tuo abbonamento Cerbero si rinnoverà a breve.",
+        });
+
+        break;
+      }
+
+      /* ---------------------------------- */
+      /* invoice.payment_failed             */
+      /* ---------------------------------- */
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+
+        let email = invoice.customer_email || null;
+        const stripeCustomerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : (invoice.customer as any)?.id;
+
+        if (!email && stripeCustomerId) {
+          const r = await db.query(
+            "SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1",
+            [stripeCustomerId]
+          );
+          email = r.rowCount ? r.rows[0].email : null;
+        }
+
+        if (!email && stripeCustomerId) {
+          const c = await stripe.customers.retrieve(stripeCustomerId);
+          email = (c as any)?.email ?? null;
+        }
+
+        if (stripeCustomerId && !isFounder((email || "").toLowerCase())) {
           await db.query(
-            `
-            UPDATE tenants
-            SET autopilot_enabled = false
-            WHERE stripe_customer_id = $1;
-          `,
+            "UPDATE tenants SET autopilot_enabled = false WHERE stripe_customer_id = $1",
             [stripeCustomerId]
-          );
-
-          console.log(
-            "[Stripe Webhook] invoice.payment_failed → autopilot_enabled = false",
-            { stripeCustomerId }
           );
         }
 
-        if (customerEmail) {
+        if (email) {
           await sendNotificationEmail({
-            to: customerEmail,
-            subject: "Cerbero AI – Problema con il rinnovo dell’abbonamento",
+            to: email,
+            subject: "Cerbero AI – Pagamento non riuscito",
             text:
-              "Non siamo riusciti a rinnovare il tuo abbonamento Cerbero Autopilot (pagamento non riuscito).\n" +
-              "L'autotrading è stato messo in pausa per sicurezza.\n" +
-              "Aggiorna il metodo di pagamento e, quando preferisci, riattiva Cerbero dalla dashboard.",
+              "Il pagamento non è andato a buon fine. Autopilot è stato messo in pausa.",
           });
         }
 
         break;
       }
 
-      /**
-       * 4) customer.subscription.updated / deleted
-       *    → se lo status diventa non-attivo → spegniamo autopilot
-       *    → se torna active NON lo riaccendiamo: decide l'utente dal toggle.
-       */
+      /* ---------------------------------- */
+      /* subscription.updated / deleted     */
+      /* ---------------------------------- */
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
-        const status = sub.status;
-
         const stripeCustomerId =
           typeof sub.customer === "string"
             ? sub.customer
@@ -292,67 +205,35 @@ export async function POST(req: NextRequest) {
 
         if (!stripeCustomerId) break;
 
-        const inactiveStatuses: Stripe.Subscription.Status[] = [
-          "canceled",
-          "unpaid",
-          "past_due",
-          "incomplete_expired",
-        ];
-
-        if (inactiveStatuses.includes(status)) {
-          // risolvi email tenant e applica whitelist founder
-          const tRes = await db.query(
-            `SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1;`,
+        if (
+          ["canceled", "unpaid", "past_due", "incomplete_expired"].includes(
+            sub.status
+          )
+        ) {
+          const r = await db.query(
+            "SELECT email FROM tenants WHERE stripe_customer_id = $1 LIMIT 1",
             [stripeCustomerId]
           );
-          const email = (tRes.rowCount ? (tRes.rows[0].email as string) : "")
-            .toLowerCase()
-            .trim();
+          const email = r.rowCount ? r.rows[0].email : "";
 
-          if (isFounder(email)) {
-            console.log("[Stripe Webhook] founder bypass: keep autopilot_enabled", {
-              email,
-              stripeCustomerId,
-              status,
-            });
-            break;
+          if (!isFounder(email.toLowerCase())) {
+            await db.query(
+              "UPDATE tenants SET autopilot_enabled = false WHERE stripe_customer_id = $1",
+              [stripeCustomerId]
+            );
           }
-
-          await db.query(
-            `
-            UPDATE tenants
-            SET autopilot_enabled = false
-            WHERE stripe_customer_id = $1;
-          `,
-            [stripeCustomerId]
-          );
-
-          console.log(
-            "[Stripe Webhook] subscription inactive → autopilot_enabled = false",
-            { stripeCustomerId, status }
-          );
-        } else {
-          console.log(
-            "[Stripe Webhook] subscription status",
-            status,
-            "→ nessun cambio autopilot (lo decide il toggle utente)"
-          );
         }
 
         break;
       }
 
       default:
-        console.log("[Stripe Webhook] Event non gestito:", event.type);
         break;
     }
 
     return NextResponse.json({ received: true });
-  } catch (err) {
-    console.error("[Stripe Webhook] Handler error:", err);
-    return NextResponse.json(
-      { error: "Webhook handler error" },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error("[Stripe Webhook] handler error", e);
+    return NextResponse.json({ error: "Webhook error" }, { status: 500 });
   }
 }

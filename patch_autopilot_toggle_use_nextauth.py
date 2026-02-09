@@ -1,4 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+#!/usr/bin/env python3
+from pathlib import Path
+from datetime import datetime
+
+TARGET = Path("app/api/autopilot/toggle/route.ts")
+
+NEW = """import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { db } from "@/lib/db";
@@ -132,3 +138,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Errore server" }, { status: 500 });
   }
 }
+"""
+
+def main():
+    if not TARGET.exists():
+        raise SystemExit(f"ERROR: missing {TARGET}")
+
+    old = TARGET.read_text(encoding="utf-8")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    bak = TARGET.with_suffix(TARGET.suffix + f".bak_nextauth_{ts}")
+    bak.write_text(old, encoding="utf-8")
+
+    TARGET.write_text(NEW, encoding="utf-8")
+    print("OK: /api/autopilot/toggle now uses NextAuth session (no JWT_SECRET needed)")
+    print(f"Backup: {bak}")
+
+if __name__ == "__main__":
+    main()

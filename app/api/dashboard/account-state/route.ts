@@ -19,6 +19,7 @@ export async function GET(req: Request) {
       SELECT
         t.id as tenant_id,
         t.autopilot_enabled,
+        t.aggressiveness,
         ca.provider,
         ca.metaapi_platform,
         ca.status as cefi_status,
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
       ok: true,
       tenant: { id: row.tenant_id, email },
       autopilot: { enabled: Boolean(row.autopilot_enabled) },
+      aggressiveness: (row.aggressiveness ?? 'NORMAL'),
       open_trades: openTrades,
       broker: {
         provider: row.provider ?? null,
