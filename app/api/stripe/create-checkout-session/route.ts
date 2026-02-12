@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import jwt from "jsonwebtoken";
-import { db } from "@/lib/db";
-
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY as string | undefined;
 const STRIPE_PRICE_ID_AUTOPILOT = process.env
   .STRIPE_PRICE_ID_AUTOPILOT as string | undefined;
@@ -56,83 +54,44 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    // 2) Public funnel: NO DB, NO tenant creation here.
+    // Tenant viene creato/aggiornato SOLO dal webhook Stripe (checkout.session.completed).
+    // Qui creiamo solo Customer + Checkout Session.
 
-    // 2) Tenant + stripe_customer_id
-    const client = await db.connect();
-    try {
-      const tenantRes = await client.query(
-        `
-        SELECT id, email, stripe_customer_id
-        FROM tenants
-        WHERE email = $1
-        LIMIT 1;
-      `,
-        [email]
-      );
+    const customer = await stripe.customers.create({
+      email,
+      metadata: {
+        email, // ridondante ma utile come fallback server-side
+      },
+    });
 
-      const tenant = tenantRes.rows[0];
-
-      if (!tenant) {
-        return NextResponse.json(
-          { ok: false, error: "Tenant not found for this email" },
-          { status: 404 }
-        );
-      }
-
-      let stripeCustomerId: string | null = tenant.stripe_customer_id;
-
-      if (!stripeCustomerId) {
-        // Creiamo il customer su Stripe
-        const customer = await stripe.customers.create({
-          email,
-          metadata: {
-            tenantId: tenant.id,
-          },
-        });
-
-        stripeCustomerId = customer.id;
-
-        // Salviamo nel DB
-        await client.query(
-          `
-          UPDATE tenants
-          SET stripe_customer_id = $1
-          WHERE id = $2;
-        `,
-          [stripeCustomerId, tenant.id]
-        );
-      }
-
-      // 3) Creiamo la Checkout Session per il piano Autopilot
-      const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        customer: stripeCustomerId,
-        line_items: [
-          {
-            price: STRIPE_PRICE_ID_AUTOPILOT,
-            quantity: 1,
-          },
-        ],
-        success_url: `${APP_URL}/wallet?stripe=success`,
-        cancel_url: `${APP_URL}/pricing?stripe=cancel`,
-        metadata: {
-          tenantId: tenant.id,
-          email: tenant.email,
-          plan: "autopilot",
-        },
-      });
-
-      return NextResponse.json(
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customer.id,
+      line_items: [
         {
-          ok: true,
-          url: session.url,
+          price: STRIPE_PRICE_ID_AUTOPILOT,
+          quantity: 1,
         },
-        { status: 200 }
-      );
-    } finally {
-      client.release();
-    }
-  } catch (err) {
+      ],
+      // Dopo pagamento -> vai al login (l'utente riceverà il link NextAuth via email)
+      success_url: `${APP_URL}/login?paid=1`,
+      cancel_url: `${APP_URL}/pricing?stripe=cancel`,
+      metadata: {
+        email,
+        plan: "autopilot",
+      },
+    });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        url: session.url,
+        redirectUrl: session.url,
+      },
+      { status: 200 }
+    );
+} catch (err) {
     console.error("[Stripe] create-checkout-session error:", err);
     return NextResponse.json(
       { ok: false, error: "Stripe create-checkout-session failed" },
