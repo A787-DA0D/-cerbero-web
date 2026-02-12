@@ -82,8 +82,15 @@ export async function POST(req: NextRequest) {
           subStatus = sub.status;
           if (typeof (sub as any).current_period_end === "number") {
             periodEnd = new Date((sub as any).current_period_end * 1000);
+          } else {
+            // Fallback: Stripe può esporre le date sul primo item
+            const itemCpe = (sub as any)?.items?.data?.[0]?.current_period_end;
+            if (typeof itemCpe === "number") {
+              periodEnd = new Date(itemCpe * 1000);
+            }
           }
-          planCode = (sub as any).items?.data?.[0]?.price?.id ?? null;
+
+          planCode = (sub as any)?.items?.data?.[0]?.price?.id ?? null;
         }
 
         await db.query(
