@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { db } from "@/lib/db";
@@ -63,12 +64,13 @@ export async function POST(req: NextRequest) {
 
     // Upsert cefi_accounts (provider=metaapi)
     // status: pending (istituzionale: onboarding in corso)
+    const newId = crypto.randomUUID();
     const up = await db.query(
       `
       INSERT INTO cefi_accounts
-        (tenant_id, provider, metaapi_platform, metaapi_region, metaapi_login, metaapi_server, metaapi_account_id, status)
+        (id, tenant_id, provider, metaapi_platform, metaapi_region, metaapi_login, metaapi_server, metaapi_account_id, status)
       VALUES
-        ($1, $2, $3, $4, $5, $6, $7, 'pending')
+        ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
       ON CONFLICT (tenant_id, provider) DO UPDATE
         SET metaapi_platform = EXCLUDED.metaapi_platform,
             metaapi_region = EXCLUDED.metaapi_region,
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
             updated_at = now()
       RETURNING id, tenant_id, provider, metaapi_platform, metaapi_region, metaapi_login, metaapi_server, metaapi_account_id, status, created_at, updated_at;
       `,
-      [tenantId, provider, platform, region, login, server, metaapiAccountId]
+      [newId, tenantId, provider, platform, region, login, server, metaapiAccountId]
     );
     // --- notify coordinator to provision broker (SYNC) ---
     let provisionOk: boolean | null = null;
