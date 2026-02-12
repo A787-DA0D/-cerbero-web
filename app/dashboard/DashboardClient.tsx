@@ -164,15 +164,17 @@ function Tabs({
 function BigToggle({
   on,
   loading,
+  disabled,
   onToggle,
 }: {
   on: boolean;
   loading?: boolean;
+  disabled?: boolean;
   onToggle: (next: boolean) => void;
 }) {
   return (
     <button
-      disabled={loading}
+      disabled={loading || disabled}
       onClick={() => onToggle(!on)}
       className={cx(
         'relative h-12 w-[170px] rounded-full border p-1 text-left shadow-sm transition disabled:opacity-60',
@@ -259,8 +261,6 @@ export default function DashboardClient() {
   const [aggr, setAggr] = useState<'NORMAL' | 'AGGRESSIVE'>('NORMAL');
   const [aggrSaving, setAggrSaving] = useState<boolean>(false);
   const [aggrErr, setAggrErr] = useState<string | null>(null);
-
-  const [brokerRegion, setBrokerRegion] = useState<string>('new-york');
   const [firstName, setFirstName] = useState<string>('—');
   const [lastName, setLastName] = useState<string>('—');
 
@@ -510,7 +510,6 @@ try {
         body: JSON.stringify({
           provider: 'metaapi',
           platform: brokerPlatform,
-          region: brokerRegion?.trim() || null,
           login: brokerLogin.trim(),
           password: brokerPassword.trim(),
           server: brokerServer.trim(),
@@ -539,6 +538,12 @@ setBrokerConsent(false);
   };
 
   const toggleAutopilot = async (next: boolean) => {
+    // BROKER_GUARD: do not allow enabling autopilot without an active broker connection
+    if (next === true && brokerStatus !== 'active') {
+      alert('Collega il broker prima di attivare Autopilot.');
+      return;
+    }
+
     // SUBSCRIPTION_GUARD: UX blocks early (server-side also gates)
     if (next === true && !subscriptionFounder && !subscriptionActive) {
       alert('Abbonamento inattivo: rinnova per attivare Autopilot.');
@@ -643,7 +648,7 @@ setBrokerConsent(false);
                       {brokerUx.cta}
                     </button>
 
-                    <BigToggle on={autopilot} loading={toggleLoading} onToggle={toggleAutopilot} />
+                    <BigToggle on={autopilot} loading={toggleLoading} disabled={brokerStatus !== 'active'} onToggle={toggleAutopilot} />
                   </div>
                 </div>
 
@@ -953,16 +958,6 @@ setBrokerConsent(false);
                   value={brokerServer}
                   onChange={(e) => setBrokerServer(e.target.value)}
                   placeholder="Es. ICMarketsSC-Live"
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-[12px] font-semibold text-slate-700">Region (opzionale)</label>
-                <input
-                  value={brokerRegion}
-                  onChange={(e) => setBrokerRegion(e.target.value)}
-                  placeholder="new-york"
                   className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
                 />
               </div>

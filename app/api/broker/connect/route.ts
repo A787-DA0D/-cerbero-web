@@ -8,7 +8,6 @@ export const runtime = "nodejs";
 type Body = {
   provider?: "metaapi";
   platform?: "mt4" | "mt5";
-  region?: string | null;
   login?: string | null;
   server?: string | null;
 
@@ -19,15 +18,17 @@ type Body = {
   metaapi_account_id?: string | null;
 };
 
-function normStr(v: any): string | null {
+function normStr(v: unknown): string | null {
   const s = (v ?? "").toString().trim();
   return s ? s : null;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions as any);
-    const email = (session as any)?.user?.email?.toString().toLowerCase().trim();
+    const session = await getServerSession(authOptions);
+    const suser = (session as unknown as { user?: { email?: unknown } } | null)?.user;
+    const rawEmail = suser?.email;
+    const email = (typeof rawEmail === 'string' ? rawEmail : '').toLowerCase().trim();
     if (!email) {
       return NextResponse.json({ ok: false, error: "UNAUTHENTICATED" }, { status: 401 });
     }
@@ -39,10 +40,10 @@ export async function POST(req: NextRequest) {
 
     const provider = "metaapi";
     const platform = (body.platform || "mt5") as "mt4" | "mt5";
-    const region = normStr(body.region);
+    const region = "london";
     const login = normStr(body.login);
     const server = normStr(body.server);
-    const password = normStr((body as any).password);
+    const password = normStr((body as unknown as { password?: unknown }).password);
     const metaapiAccountId = normStr(body.metaapi_account_id);
 
     // require at least platform; other fields can be provided later
@@ -80,51 +81,79 @@ export async function POST(req: NextRequest) {
       `,
       [tenantId, provider, platform, region, login, server, metaapiAccountId]
     );
+    // --- notify coordinator to provision broker (SYNC) ---
+    let provisionOk: boolean | null = null;
+    let provisionError: string | null = null;
 
+    try {
+      const base = (process.env.COORDINATOR_BASE_URL || "").trim();
+      const key = (process.env.COORDINATOR_INTERNAL_KEY || "").trim();
 
-        // --- notify coordinator to provision broker (best-effort) ---
+      if (!base || !key) {
+        provisionOk = false;
+        provisionError = !base
+          ? "COORDINATOR_BASE_URL_MISSING"
+          : "COORDINATOR_INTERNAL_KEY_MISSING";
+      } else {
+        const pr = await fetch(`${base}/v1/broker/provision`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Key": key,
+          },
+          body: JSON.stringify({
+            email,
+            provider: "metaapi",
+            platform,
+            login,
+            password,
+            server,
+          }),
+        });
 
-        try {
+        const pj = await pr.json().catch(() => null);
 
-          const base = process.env.COORDINATOR_BASE_URL;
+        if (!pr.ok || !pj?.ok) {
+          provisionOk = false;
+          provisionError =
+            (pj && (pj.detail?.code || pj.detail?.msg || pj.detail || pj.error)) ||
+            `HTTP_${pr.status}`;
+        } else {
+          provisionOk = true;
+        }
+      }
+    } catch (e: unknown) {
+      provisionOk = false;
+      provisionError = String(e instanceof Error ? e.message : e);
+    }
 
-          const key = process.env.COORDINATOR_INTERNAL_KEY;
+    // If provisioning succeeded, mark broker active. Otherwise mark error with last_error.
+    const nextStatus = provisionOk ? "active" : "error";
+    const nextErr = provisionOk ? null : provisionError || "PROVISION_FAILED";
 
-          if (base && key) {
-
-            fetch(`${base}/v1/broker/provision`, {
-
-              method: "POST",
-
-              headers: {
-
-                "Content-Type": "application/json",
-
-                "X-Internal-Key": key,
-
-              },
-
-              body: JSON.stringify({ email, platform, login, password, server, region }),
-
-            }).catch(() => {});
-
-          }
-
-        } catch {}
-
-
+    const up2 = await db.query(
+      `
+      UPDATE cefi_accounts
+      SET status = $1,
+          last_error = $2,
+          updated_at = now()
+      WHERE id = $3
+      RETURNING id, tenant_id, provider, metaapi_platform, metaapi_region, metaapi_login, metaapi_server, metaapi_account_id, status, last_error, created_at, updated_at;
+      `,
+      [nextStatus, nextErr, up.rows[0].id]
+    );
     return NextResponse.json(
       {
         ok: true,
-        broker: up.rows[0],
+        broker: up2.rows[0],
         note:
           "Saved broker connection request (pending). Next step: Coordinator provisioning/bind + first sync.",
       },
       { status: 200 }
     );
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
-      { ok: false, error: "SERVER_ERROR", message: String(e?.message ?? e) },
+      { ok: false, error: "SERVER_ERROR", message: String(e instanceof Error ? e.message : e) },
       { status: 500 }
     );
   }

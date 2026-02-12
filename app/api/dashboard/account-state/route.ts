@@ -8,8 +8,10 @@ export const runtime = 'nodejs';
 export async function GET(req: Request) {
   try {
 
-    const session = await getServerSession(authOptions as any);
-    const email = (session as any)?.user?.email as string | undefined;
+    const session = await getServerSession(authOptions);
+    const suser = (session as unknown as { user?: { email?: unknown } } | null)?.user;
+    const rawEmail = suser?.email;
+    const email = (typeof rawEmail === 'string' ? rawEmail : undefined);
 
     if (!email) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
@@ -71,9 +73,9 @@ export async function GET(req: Request) {
         updated_at: row.updated_at ?? null,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
-      { ok: false, error: 'SERVER_ERROR', message: String(e?.message ?? e) },
+      { ok: false, error: 'SERVER_ERROR', message: String(e instanceof Error ? e.message : e) },
       { status: 500 }
     );
   }
