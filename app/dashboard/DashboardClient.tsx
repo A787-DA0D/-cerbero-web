@@ -22,6 +22,15 @@ type TradesResponse = {
   trades?: TradeRow[];
 };
 
+
+type BillingStatusResponse = {
+  email: string;
+  subscription_status: string | null;
+  plan_code: string | null;
+  current_period_end: string | null;
+  autopilot_enabled: boolean | null;
+};
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { signOut, useSession } from 'next-auth/react';
@@ -47,6 +56,17 @@ function formatLastSync(ts?: string | null) {
   return `${days} g fa`;
 }
 
+
+function formatDateShort(ts?: string | null) {
+  if (!ts) return '—';
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return String(ts);
+    return d.toLocaleDateString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  } catch {
+    return String(ts);
+  }
+}
 
 function formatTs(ts?: string | null) {
   if (!ts) return '—';
@@ -224,6 +244,39 @@ autopilot?: { enabled: boolean };
 export default function DashboardClient() {
   const { data: session, status } = useSession();
 
+  useEffect(() => {
+    const email = String(session?.user?.email || "").trim().toLowerCase();
+    if (!email) return;
+
+    let cancelled = false;
+    setBillingLoading(true);
+    setBillingError(null);
+
+    fetch("/api/billing/status", { method: "GET" })
+      .then(async (r) => {
+        const t = await r.text();
+        const j = t ? JSON.parse(t) : null;
+        if (!r.ok) throw new Error(j?.error || j?.detail?.code || "BILLING_STATUS_FAILED");
+        return j as BillingStatusResponse;
+      })
+      .then((j) => {
+        if (cancelled) return;
+        setBillingStatus(j);
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        setBillingError(String(e?.message || "Billing status error"));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setBillingLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.email]);
+
   const email = (session?.user?.email || '').toString();
 
   const [tab, setTab] = useState<TabKey>('overview');
@@ -231,6 +284,25 @@ export default function DashboardClient() {
   // ---- backend: account-state ----
   const [accountState, setAccountState] = useState<AccountStateResponse | null>(null);
   const [loadingState, setLoadingState] = useState(false);
+
+  const [billingStatus, setBillingStatus] = useState<BillingStatusResponse | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
+  const openPortal = async () => {
+    try {
+      setBillingError(null);
+      const r = await fetch("/api/billing/create-portal-session", { method: "POST" });
+      const t = await r.text();
+      const j = t ? JSON.parse(t) : null;
+      if (!r.ok) throw new Error(j?.error || j?.detail?.code || "PORTAL_FAILED");
+      const url = j?.url;
+      if (url) window.location.href = url;
+      else throw new Error("PORTAL_URL_MISSING");
+    } catch (e: any) {
+      setBillingError(String(e?.message || "Portal error"));
+    }
+  };
   const [stateError, setStateError] = useState<string | null>(null);
 
   // ---- overview placeholders ----
@@ -669,6 +741,77 @@ setBrokerConsent(false);
                     <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Open trades</div>
                     <div className="mt-2 text-3xl font-extrabold tabular-nums">{openTrades === null ? '—' : String(openTrades)}</div>
                     <div className="mt-1 text-[12px] font-semibold text-slate-500">live</div>
+                  </div>
+                </div>
+
+                {/* Subscription */}
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white/60 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Abbonamento</div>
+                      <div className="mt-1 text-[13px] font-semibold text-slate-700">
+                        {billingLoading
+                          ? 'Caricamento…'
+                          : billingError
+                          ? `Errore: ${billingError}`
+                          : billingStatus
+                          ? 'Stato aggiornato.'
+                          : '—'}
+                      </div>
+                    </div>
+
+                    <Pill
+                      label={
+                        billingLoading
+                          ? 'LOADING'
+                          : (billingStatus?.subscription_status || 'inactive').toUpperCase()
+                      }
+                      tone={
+                        billingLoading
+                          ? 'neutral'
+                          : (billingStatus?.subscription_status || '') === 'active' || (billingStatus?.subscription_status || '') === 'trialing'
+                          ? 'ok'
+                          : (billingStatus?.subscription_status || '') === 'past_due'
+                          ? 'warn'
+                          : 'neutral'
+                      }
+                    />
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white/70 p-3">
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Piano</div>
+                      <div className="mt-1 text-[13px] font-semibold text-slate-800">
+                        {billingStatus?.plan_code ? billingStatus.plan_code : '—'}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white/70 p-3">
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Scadenza</div>
+                      <div className="mt-1 text-[13px] font-semibold text-slate-800">
+                        {formatDateShort(billingStatus?.current_period_end || null)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white/70 p-3">
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Autopilot</div>
+                      <div className="mt-1 text-[13px] font-semibold text-slate-800">
+                        {billingStatus?.autopilot_enabled === true ? 'ON' : billingStatus?.autopilot_enabled === false ? 'OFF' : '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={openPortal}
+                      disabled={billingLoading || !billingStatus}
+                      className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-sm hover:bg-white disabled:opacity-60"
+                    >
+                      Gestisci abbonamento
+                    </button>
+                    <div className="text-[12px] font-semibold text-slate-500">
+                      Modifica metodo di pagamento, annulla o aggiorna piano dal portale Stripe.
+                    </div>
                   </div>
                 </div>
 
