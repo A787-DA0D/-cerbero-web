@@ -58,10 +58,10 @@ function formatLastSync(ts?: string | null) {
 
 
 function daysUntil(ts?: string | null) {
-  if (!ts) return None as any;
+  if (!ts) return null as any;
   const d = new Date(ts);
   const ms = d.getTime();
-  if (!isFinite(ms)) return None as any;
+  if (!isFinite(ms)) return null as any;
   const diff = ms - Date.now();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
