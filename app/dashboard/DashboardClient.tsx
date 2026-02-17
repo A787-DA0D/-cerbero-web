@@ -57,6 +57,15 @@ function formatLastSync(ts?: string | null) {
 }
 
 
+function daysUntil(ts?: string | null) {
+  if (!ts) return None as any;
+  const d = new Date(ts);
+  const ms = d.getTime();
+  if (!isFinite(ms)) return None as any;
+  const diff = ms - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
 function formatDateShort(ts?: string | null) {
   if (!ts) return '—';
   try {
@@ -286,6 +295,57 @@ export default function DashboardClient() {
   const [loadingState, setLoadingState] = useState(false);
 
   const [billingStatus, setBillingStatus] = useState<BillingStatusResponse | null>(null);
+
+  const bannerKey = useMemo(() => {
+    const cpe = billingStatus?.current_period_end || "";
+    const st = billingStatus?.subscription_status || "";
+    return `cerbero_banner_v1:${st}:${cpe}`;
+  }, [billingStatus?.current_period_end, billingStatus?.subscription_status]);
+
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(bannerKey);
+      setBannerDismissed(v === "1");
+    } catch {}
+  }, [bannerKey]);
+
+  const dismissBanner = () => {
+    try { localStorage.setItem(bannerKey, "1"); } catch {}
+    setBannerDismissed(true);
+  };
+
+  const banner = useMemo(() => {
+    if (!billingStatus) return null;
+    const st = (billingStatus.subscription_status || "inactive").toLowerCase();
+    const isActive = st === "active" || st === "trialing";
+    const cpe = billingStatus.current_period_end || null;
+
+    // Banner 1: abbonamento inattivo
+    if (!isActive) {
+      return {
+        tone: "warn" as const,
+        title: "Abbonamento inattivo",
+        body: "Autopilot è in pausa. Gestisci l’abbonamento per riattivare il servizio.",
+        cta: "Gestisci abbonamento",
+      };
+    }
+
+    // Banner 2: scadenza vicina
+    const dleft = daysUntil(cpe);
+    if (typeof dleft === "number" && isFinite(dleft) && dleft >= 0 && dleft <= 3) {
+      return {
+        tone: "neutral" as const,
+        title: `Scade tra ${dleft} ${dleft === 1 ? "giorno" : "giorni"}`,
+        body: "Per evitare interruzioni, verifica il metodo di pagamento dal portale.",
+        cta: "Gestisci abbonamento",
+      };
+    }
+
+    return null;
+  }, [billingStatus]);
+
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
 
@@ -696,6 +756,47 @@ setBrokerConsent(false);
             {tab === 'overview' && (
               <Card className="p-6 relative overflow-hidden">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-cyan-400 opacity-80" />
+                {!bannerDismissed && banner && (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm relative overflow-hidden" data-testid="cerbero-banner">
+                    <div className="pointer-events-none absolute inset-0 opacity-30"
+                         style={{ backgroundImage: "radial-gradient(circle at 20% 0%, rgba(34,211,238,0.35), transparent 55%), radial-gradient(circle at 80% 10%, rgba(236,72,153,0.22), transparent 55%)" }} />
+                    <div className="relative flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 h-9 w-9 rounded-2xl bg-white ring-1 ring-slate-200 flex items-center justify-center">
+                          <Image src="/branding/cerbero-logo.svg" alt="Cerbero" width={22} height={22} />
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">
+                            {banner.tone === "warn" ? "Billing" : "Promemoria"}
+                          </div>
+                          <div className="mt-1 text-[15px] font-extrabold text-slate-900">{banner.title}</div>
+                          <div className="mt-1 text-[13px] font-semibold text-slate-600">{banner.body}</div>
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+                            <button
+                              onClick={openPortal}
+                              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-sm hover:bg-white"
+                            >
+                              {banner.cta}
+                            </button>
+                            <div className="text-[12px] font-semibold text-slate-500">
+                              Puoi gestire il piano anche dalla sezione “Abbonamento”.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={dismissBanner}
+                        className="relative z-10 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[12px] font-extrabold text-slate-600 hover:bg-white"
+                        aria-label="Chiudi banner"
+                        title="Chiudi"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Overview</div>
