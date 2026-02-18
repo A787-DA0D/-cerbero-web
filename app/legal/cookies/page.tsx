@@ -6,131 +6,119 @@ export default function CookiesPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-2">
           <h1 className="text-2xl md:text-3xl font-semibold">
-            Cookie Policy – Cerbero AI
+            Cookies Policy – Cerbero AI
           </h1>
-          <p className="text-sm text-white/70">Ultimo aggiornamento: DD/MM/YYYY</p>
+          <p className="text-sm text-white/70">
+            2026-02-18
+          </p>
         </header>
 
-        {/* INTRO */}
+        {/* 1 */}
         <section className="space-y-2 text-sm leading-relaxed text-white/80">
+          <h2 className="text-base md:text-lg font-semibold text-white">
+            1. What Are Cookies
+          </h2>
           <p>
-            La presente Cookie Policy si applica al sito{" "}
-            <span className="font-medium">cerberoai.com</span> e ai servizi erogati
-            tramite la Piattaforma Cerbero AI.
+            Cookies are small text files stored on your device when you visit a
+            website. They help improve user experience, enable functionality,
+            and provide analytical insights.
           </p>
         </section>
 
-        {/* COSA SONO */}
+        {/* 2 */}
         <section className="space-y-2 text-sm leading-relaxed text-white/80">
           <h2 className="text-base md:text-lg font-semibold text-white">
-            Cosa Sono i Cookie
+            2. How Cerbero AI Uses Cookies
           </h2>
           <p>
-            I cookie sono piccoli file di testo installati sul dispositivo
-            dell’Utente con finalità tecniche, funzionali o statistiche. Sono
-            incluse tecnologie simili come pixel, local storage e SDK.
+            Cerbero AI uses cookies and similar technologies strictly for
+            operational and security purposes.
           </p>
-        </section>
-
-        {/* TIPI DI COOKIE */}
-        <section className="space-y-2 text-sm leading-relaxed text-white/80">
-          <h2 className="text-base md:text-lg font-semibold text-white">
-            Tipologie di Cookie Utilizzati
-          </h2>
-
-          <h3 className="font-medium text-white/90 mt-3">Cookie Tecnici (Necessari)</h3>
-          <p>Essenziali per:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>autenticazione tramite Magic.link;</li>
-            <li>sicurezza e prevenzione abusi;</li>
-            <li>gestione sessioni e preferenze.</li>
+            <li>Authentication and session management;</li>
+            <li>Security and fraud prevention;</li>
+            <li>Performance monitoring;</li>
+            <li>Preference storage (where applicable).</li>
           </ul>
-          <p className="text-white/70">Non richiedono consenso.</p>
+        </section>
 
-          <h3 className="font-medium text-white/90 mt-3">Cookie di Analisi (Analytics)</h3>
-          <p>
-            Utilizzati per statistiche aggregate sull’utilizzo del Sito. Quando
-            possibile, l’indirizzo IP viene anonimizzato.
-          </p>
-          <p>
-            Se l’anonimizzazione non è applicata, è richiesto il consenso
-            esplicito dell’Utente.
-          </p>
+        {/* 3 */}
+        <section className="space-y-2 text-sm leading-relaxed text-white/80">
+          <h2 className="text-base md:text-lg font-semibold text-white">
+            3. Types of Cookies We May Use
+          </h2>
 
-          <h3 className="font-medium text-white/90 mt-3">Cookie di Funzionalità</h3>
-          <p>
-            Consentono funzionalità aggiuntive e preferenze non essenziali
-            dell’interfaccia. Richiedono consenso.
-          </p>
-
-          <h3 className="font-medium text-white/90 mt-3">
-            Cookie di Profilazione / Marketing
+          <h3 className="font-medium text-white/90 mt-2">
+            Essential Cookies
           </h3>
           <p>
-            Non utilizzati di default. Eventuale introduzione richiederà
-            aggiornamento del banner e nuovo consenso.
+            Required for the website to function properly, including secure login
+            and dashboard access.
+          </p>
+
+          <h3 className="font-medium text-white/90 mt-2">
+            Performance Cookies
+          </h3>
+          <p>
+            Help us understand how users interact with the platform to improve
+            reliability and usability.
+          </p>
+
+          <h3 className="font-medium text-white/90 mt-2">
+            Security Cookies
+          </h3>
+          <p>
+            Used to protect against unauthorized access, session hijacking,
+            and malicious activity.
           </p>
         </section>
 
-        {/* TERZE PARTI */}
+        {/* 4 */}
         <section className="space-y-2 text-sm leading-relaxed text-white/80">
           <h2 className="text-base md:text-lg font-semibold text-white">
-            Cookie di Terze Parti
+            4. Third-Party Cookies
           </h2>
-          <p>Possono essere utilizzati da servizi integrati, tra cui:</p>
-
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Magic.link (autenticazione)</li>
-            <li>Stripe (pagamenti)</li>
-            <li></li>
-            <li>Google Cloud Platform</li>
-            <li>strumenti analytics</li>
-          </ul>
-
           <p>
-            Le loro cookie policy sono consultabili direttamente sui rispettivi
-            siti ufficiali.
+            Certain third-party service providers (e.g., authentication,
+            billing, hosting, analytics) may set cookies necessary for their
+            services to operate correctly.
           </p>
         </section>
 
-        {/* GESTIONE */}
+        {/* 5 */}
         <section className="space-y-2 text-sm leading-relaxed text-white/80">
           <h2 className="text-base md:text-lg font-semibold text-white">
-            Gestione delle Preferenze
+            5. Managing Cookies
           </h2>
-          <p>L’Utente può:</p>
-
-          <ul className="list-disc pl-5 space-y-1">
-            <li>accettare o rifiutare cookie tramite il banner dedicato;</li>
-            <li>modificare in qualsiasi momento le preferenze tramite apposito link;</li>
-            <li>gestire o eliminare cookie tramite le impostazioni del browser.</li>
-          </ul>
-
-          <p className="text-white/70">
-            La disattivazione dei cookie tecnici può compromettere il corretto
-            funzionamento del Sito.
+          <p>
+            You may control or delete cookies through your browser settings.
+            Disabling essential cookies may limit access to certain features of
+            the Platform.
           </p>
         </section>
 
-        {/* AGGIORNAMENTI */}
+        {/* 6 */}
         <section className="space-y-2 text-sm leading-relaxed text-white/80">
           <h2 className="text-base md:text-lg font-semibold text-white">
-            Aggiornamenti alla Cookie Policy
+            6. Changes to This Policy
           </h2>
           <p>
-            La presente Cookie Policy può essere aggiornata per ragioni tecniche,
-            legali o funzionali. L’uso continuato del Sito implica accettazione
-            delle eventuali modifiche.
+            We may update this Cookies Policy from time to time. Continued use
+            of the Platform constitutes acceptance of any modifications.
           </p>
         </section>
 
-        {/* CONTATTI */}
+        {/* 7 */}
         <section className="space-y-2 text-sm leading-relaxed text-white/80">
-          <h2 className="text-base md:text-lg font-semibold text-white">Contatti</h2>
+          <h2 className="text-base md:text-lg font-semibold text-white">
+            7. Contact
+          </h2>
           <p>
-            Per domande relative alla privacy e ai cookie, è possibile contattare:
+            For questions regarding this Cookies Policy, contact:
           </p>
-          <p className="font-medium text-emerald-300">info@cerberoai.com</p>
+          <p className="font-medium">
+            support@cerberoai.com
+          </p>
         </section>
       </div>
     </main>
