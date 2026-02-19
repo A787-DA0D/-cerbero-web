@@ -19,6 +19,11 @@ type TradeRow = {
   entry_price?: number | null;
   exit_price?: number | null;
   pnl_usdc?: number | null;
+  why?: {
+    reasons?: any;
+    strategy_origin?: string | null;
+    strength?: string | null;
+  } | null;
 };
 
 type TradesResponse = {
@@ -328,6 +333,7 @@ export default function DashboardClient() {
   const [brokerMsg, setBrokerMsg] = useState<string | null>(null);
   const [brokerErr, setBrokerErr] = useState<string | null>(null);
   const [brokerSubmitting, setBrokerSubmitting] = useState(false);
+  const [brokerDisconnecting, setBrokerDisconnecting] = useState(false);
   const [brokerConsent, setBrokerConsent] = useState(false);
   const [brokerPlatform, setBrokerPlatform] = useState<'mt4' | 'mt5'>('mt5');
   const [brokerLogin, setBrokerLogin] = useState<string>('');
@@ -344,7 +350,9 @@ export default function DashboardClient() {
   const [tradesLoading, setTradesLoading] = useState<boolean>(false);
   const [tradesErr, setTradesErr] = useState<string | null>(null);
 
-  useEffect(() => {
+    const [tradesScope, setTradesScope] = useState<"live" | "history">("live");
+
+useEffect(() => {
     if (status === 'unauthenticated') window.location.href = '/login';
   }, [status]);
 
@@ -373,22 +381,24 @@ export default function DashboardClient() {
     }
   };
 
-  const reloadTrades = async () => {
+  const reloadTrades = async (scope?: 'live' | 'history') => {
     try {
+      const sc = (scope || tradesScope || 'live');
       setTradesLoading(true);
       setTradesErr(null);
 
-      const res = await fetch('/api/dashboard/trades', { method: 'GET' });
+      const res = await fetch(`/api/dashboard/trades?scope=`, { method: 'GET' });
       const j = await safeJson<TradesResponse>(res);
 
       if (!res.ok || !j || j.ok !== true) {
-        const msg = j?.error || j?.message || `HTTP_${res.status}`;
+        const msg = j?.error || j?.message || `HTTP_`;
         setTrades(null);
         setTradesErr(msg);
         return;
       }
 
       setTrades(Array.isArray(j.trades) ? j.trades : []);
+      setTradesScope(sc as any);
     } catch (e: unknown) {
       setTrades(null);
       setTradesErr(errMsg(e, 'Trades error'));
@@ -404,7 +414,7 @@ export default function DashboardClient() {
   }, [status]);
 
   useEffect(() => {
-    if (tab === 'trades' && trades === null && !tradesLoading) reloadTrades();
+    if (tab === 'trades' && trades === null && !tradesLoading) reloadTrades(tradesScope);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -684,7 +694,45 @@ export default function DashboardClient() {
     }
   };
 
-  const toggleAutopilot = async (next: boolean) => {
+
+  const submitBrokerDisconnect = async () => {
+  try {
+    setBrokerDisconnecting(true);
+    setBrokerErr(null);
+    setBrokerMsg(null);
+
+
+    if (!confirm("Prima di disconnettere: spegni Autopilot e assicurati di non avere posizioni aperte. Vuoi continuare?") ) {
+      setBrokerDisconnecting(false);
+      return;
+    }
+    const res = await fetch('/api/broker/disconnect', { method: 'POST' });
+    const j = await res.json().catch(() => null);
+
+    if (!res.ok || j?.ok === false) {
+      const msg =
+        (j && (j.user_message || j.error || j.code)) ||
+        `HTTP_${res.status}`;
+      setBrokerErr(String(msg));
+      setBrokerMsg(null);
+      return;
+    }
+
+    setBrokerMsg('Broker disconnesso.');
+    setBrokerErr(null);
+
+    // refresh stato dashboard (se hai già questa fetch altrove, qui è safe ripeterla)
+    // opzionale: ricarica pagina per riflettere subito lo stato
+    // window.location.reload();
+
+  } catch (e: unknown) {
+    const msg = String(e instanceof Error ? e.message : e);
+    setBrokerErr(msg || 'Errore di rete');
+    setBrokerMsg(null);
+  } finally {
+    setBrokerDisconnecting(false);
+  }
+};  const toggleAutopilot = async (next: boolean) => {
     if (next === true && brokerStatus !== 'active') {
       setUiNotice({ type: 'warn', message: 'Per attivare Autopilot collega prima il broker.' });
       setUiNoticeCta('connect_broker');
@@ -785,6 +833,8 @@ export default function DashboardClient() {
             type="button"
             onClick={() => {
               setTab('trades');
+              setTradesScope("live");
+              setTrades(null);
               setSidebarOpen(false);
             }}
             className={
@@ -800,6 +850,29 @@ export default function DashboardClient() {
             <CandlestickChart className="h-5 w-5" />
             <span className="text-[13px]">Live Trades</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTab("trades");
+              setTradesScope("history");
+              setTrades(null);
+              setSidebarOpen(false);
+            }}
+            className={
+              "w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left font-semibold transition " +
+              (tab === "trades" && tradesScope === "history" ? "text-white" : "text-slate-100 hover:bg-white/3")
+            }
+            style={
+              tab === "trades" && tradesScope === "history"
+                ? { backgroundImage: "linear-gradient(135deg, rgba(6,182,212,0.22), rgba(139,92,246,0.30), rgba(236,72,153,0.22))" }
+                : undefined
+            }
+          >
+            <CandlestickChart className="h-5 w-5" />
+            <span className="text-[13px]">Trade History</span>
+          </button>
+
 
           <div className="mt-4 rounded-3xl border border-white/18 bg-white/3 p-4">
             <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/80">Account</div>
@@ -960,11 +1033,34 @@ export default function DashboardClient() {
                       ? `Errore: ${stateError}`
                       : ''}
                   </div>
+
+                {brokerErr && (
+                  <div className="mt-3 rounded-2xl border border-amber-300/35 bg-amber-300/15 px-4 py-3 text-[12px] font-semibold text-amber-100">
+                    {brokerErr}
+                  </div>
+                )}
+
+                {brokerMsg && (
+                  <div className="mt-3 rounded-2xl border border-white/18 bg-white/3 px-4 py-3 text-[12px] font-semibold text-white/85">
+                    {brokerMsg}
+                  </div>
+                )}
+
+
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <Pill label={brokerPill.label} tone={brokerPill.tone} className="px-4 py-2 text-[12px]" />
                   <SoftButton onClick={brokerUx.onClick}>{brokerUx.cta}</SoftButton>
+                  {brokerStatus === 'active' && (
+                    <SoftButton
+                      onClick={submitBrokerDisconnect}
+                      disabled={brokerDisconnecting || brokerSubmitting}
+                      className="ml-2"
+                    >
+                      {brokerDisconnecting ? 'Disconnessione…' : 'Disconnetti'}
+                    </SoftButton>
+                  )}
                   <BigToggle on={autopilot} loading={toggleLoading} disabled={brokerStatus !== 'active'} onToggle={toggleAutopilot} />
                 </div>
               </div>
@@ -1070,18 +1166,18 @@ export default function DashboardClient() {
           ) : (
             <Card className="p-6 relative overflow-hidden">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px]" style={{ backgroundImage: 'linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899)' }} />
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Live Trades</div>
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">{tradesScope === "history" ? "Trade History" : "Live Trades"}</div>
 
               <div className="mt-3 flex items-center justify-between gap-3">
                 <div className="text-[12px] text-white/80">{tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : trades ? `${trades.length} trade(s)` : '—'}</div>
-                <SoftButton onClick={reloadTrades} className="px-3 py-2">
+                <SoftButton onClick={() => reloadTrades(tradesScope)} className="px-3 py-2">
                   Ricarica
                 </SoftButton>
               </div>
 
               <div className="mt-4 space-y-3">
                 {!trades || trades.length === 0 ? (
-                  <div className="rounded-3xl border border-white/18 bg-white/3 p-4 text-[13px] text-white/85">{tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : 'Nessun trade ancora.'}</div>
+                  <div className="rounded-3xl border border-white/18 bg-white/3 p-4 text-[13px] text-white/85">{tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : (tradesScope === "history" ? "Nessun trade storico ancora." : "Nessun trade ancora.")}</div>
                 ) : (
                   trades.map((t: TradeRow, i: number) => {
                     const key = t.id || `${i}-${String(t.symbol || '')}-${String(t.ts || t.created_at || t.opened_at || '')}`;
@@ -1114,6 +1210,35 @@ export default function DashboardClient() {
                                 <span className="rounded-full border border-white/18 bg-white/3 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white">{st}</span>
                               </div>
                               <div className="mt-1 text-[12px] text-white/90">{formatTs(ts0)}</div>
+
+                              {(() => {
+                                const w = (t as any)?.why || null;
+                                const reasons = w?.reasons ?? null;
+                                const origin = (w?.strategy_origin || '').toString().trim();
+                                const parts: string[] = [];
+
+                                // reasons può essere array JSONB o stringa
+                                if (Array.isArray(reasons)) {
+                                  for (const x of reasons) {
+                                    const v = (x ?? '').toString().trim();
+                                    if (v) parts.push(v);
+                                  }
+                                } else if (typeof reasons === 'string') {
+                                  const v = reasons.trim();
+                                  if (v) parts.push(v);
+                                }
+
+                                if (origin) parts.push(`(${origin})`);
+
+                                if (!parts.length) return null;
+
+                                return (
+                                  <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-white/18 bg-white/3 px-3 py-2 text-[12px] font-semibold text-white/85">
+                                    <span className="font-extrabold uppercase tracking-[0.18em] text-white/80">WHY</span>
+                                    <span className="break-words">{parts.join(' • ')}</span>
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             <div className="shrink-0 text-right">

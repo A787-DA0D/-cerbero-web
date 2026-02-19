@@ -40,26 +40,48 @@ export async function GET(req: Request) {
 
     const rows = await db.query(
       `
+
       SELECT
-        id,
-        tenant_id,
-        symbol,
-        side,
-        size_usdc,
-        entry_price,
-        status,
-        opened_at,
-        closed_at,
-        pnl_realized,
-        provider_account_id,
-        provider_position_id,
-        provider_order_id,
-        close_reason,
-        updated_at
-      FROM positions
-      WHERE tenant_id = $1 AND ${where}
+        p.id,
+        p.tenant_id,
+        p.symbol,
+        p.side,
+        p.size_usdc,
+        p.entry_price,
+        p.status,
+        p.opened_at,
+        p.closed_at,
+        p.pnl_realized,
+        p.provider_account_id,
+        p.provider_position_id,
+        p.provider_order_id,
+        p.close_reason,
+        p.updated_at,
+
+        -- WHY (from latest matching execution)
+        ex.reasons AS why_reasons,
+        ex.strategy_origin AS why_strategy_origin,
+        ex.strength AS why_strength
+      FROM positions p
+      LEFT JOIN LATERAL (
+        SELECT
+          (e.request_payload #> '{intent,meta,reasons}') AS reasons,
+          (e.request_payload #>> '{intent,meta,strategy_origin}') AS strategy_origin,
+          (e.request_payload #>> '{intent,meta,strength}') AS strength
+        FROM executions e
+        WHERE e.tenant_id = p.tenant_id
+          AND (
+            (p.provider_position_id IS NOT NULL AND e.provider_position_id = p.provider_position_id)
+            OR
+            (p.provider_order_id IS NOT NULL AND e.provider_order_id = p.provider_order_id)
+          )
+        ORDER BY e.created_at DESC
+        LIMIT 1
+      ) ex ON TRUE
+      WHERE p.tenant_id = $1 AND ${where}
       ORDER BY ${order}
       LIMIT $2 OFFSET $3
+
       `,
       [tenantId, limit, offset]
     );
@@ -77,7 +99,7 @@ export async function GET(req: Request) {
       offset,
       total: total.rows?.[0]?.n ?? 0,
       trades: rows.rows.map((r: any) => ({
-        id: r.id,
+id: r.id,
         symbol: r.symbol,
         side: r.side,
         status: r.status,
@@ -90,6 +112,11 @@ export async function GET(req: Request) {
         provider_order_id: r.provider_order_id ?? null,
         close_reason: r.close_reason ?? null,
         updated_at: r.updated_at ?? null,
+        why: {
+          reasons: r.why_reasons ?? null,
+          strategy_origin: r.why_strategy_origin ?? null,
+          strength: r.why_strength ?? null,
+        }
       })),
     });
   } catch (e: any) {
