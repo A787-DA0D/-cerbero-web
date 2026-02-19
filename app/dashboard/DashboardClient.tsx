@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { signOut, useSession } from 'next-auth/react';
-import { Menu, X, Bell, LayoutDashboard, CandlestickChart, Server, Link, Cpu, Shield, Zap } from 'lucide-react';
+import { Menu, X, LayoutDashboard, CandlestickChart, Shield, Zap } from 'lucide-react';
 
 type TabKey = 'overview' | 'trades';
 
@@ -44,7 +44,6 @@ type AccountStateResponse = {
   autopilot?: { enabled: boolean };
   broker?: { provider: string | null; platform: string | null; status: string | null };
 
-  // presente su alcuni payload (lo stavi leggendo via any)
   aggressiveness?: 'NORMAL' | 'AGGRESSIVE' | null;
 
   account?: {
@@ -78,21 +77,6 @@ async function safeJson<T>(res: Response): Promise<T | null> {
   } catch {
     return null;
   }
-}
-
-function formatLastSync(ts?: string | null) {
-  if (!ts) return '—';
-  const d = new Date(ts);
-  const ms = d.getTime();
-  if (!isFinite(ms)) return '—';
-  const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-  if (diffSec < 60) return 'adesso';
-  const mins = Math.floor(diffSec / 60);
-  if (mins < 60) return `${mins} min fa`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} h fa`;
-  const days = Math.floor(hrs / 24);
-  return `${days} g fa`;
 }
 
 function daysUntil(ts?: string | null): number | null {
@@ -151,7 +135,7 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   return (
     <div
       className={cx(
-        'rounded-3xl border border-slate-200/70 bg-white/70 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur-xl ring-1 ring-white/40 holo-card',
+        'rounded-3xl border border-white/14 bg-white/3 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.65)] ring-1 ring-white/10',
         className
       )}
     >
@@ -163,21 +147,72 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
 function Pill({
   label,
   tone = 'neutral',
+  className = '',
 }: {
   label: string;
   tone?: 'neutral' | 'ok' | 'warn';
+  className?: string;
 }) {
   const cls =
     tone === 'ok'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      ? 'border-emerald-400/25 bg-emerald-400/12 text-emerald-100'
       : tone === 'warn'
-      ? 'border-amber-200 bg-amber-50 text-amber-700'
-      : 'border-slate-200/70 bg-white/60 text-slate-700';
+      ? 'border-amber-400/25 bg-amber-400/12 text-amber-100'
+      : 'border-white/18 bg-white/3 text-slate-100';
 
+  return <span className={cx('inline-flex items-center rounded-full border px-4 py-2 text-[12px] font-semibold', cls, className)}>{label}</span>;
+}
+
+function PrimaryButton({
+  children,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
   return (
-    <span className={cx('inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold', cls)}>
-      {label}
-    </span>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        'inline-flex items-center justify-center rounded-xl px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_20px_60px_-30px_rgba(236,72,153,0.45)] transition hover:brightness-110 disabled:',
+        className
+      )}
+      style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SoftButton({
+  children,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        'inline-flex items-center justify-center rounded-xl border border-white/18 bg-white/3 px-4 py-2 text-[12px] font-extrabold text-slate-100 transition hover:bg-white/15 disabled:',
+        className
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -198,27 +233,61 @@ function BigToggle({
       disabled={loading || disabled}
       onClick={() => onToggle(!on)}
       className={cx(
-        'relative h-12 w-[170px] rounded-full border p-1 text-left shadow-sm transition disabled:opacity-60',
-        on ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white/70'
+        'relative h-12 w-[170px] rounded-full border p-1 text-left shadow-sm transition disabled:',
+        on ? 'border-emerald-400/25 bg-emerald-400/12' : 'border-white/18 bg-white/3'
       )}
       aria-label="Autopilot toggle"
     >
       <div
-        className={cx(
-          'absolute top-1 h-10 w-10 rounded-full shadow-md transition-all',
-          on ? 'left-[126px]' : 'left-1'
-        )}
+        className={cx('absolute top-1 h-10 w-10 rounded-full shadow-md transition-all', on ? 'left-[126px]' : 'left-1')}
         style={{
           backgroundImage: on
             ? 'linear-gradient(135deg, #34d399, #10b981, #06b6d4)'
-            : 'linear-gradient(135deg, #cbd5e1, #e2e8f0)',
+            : 'linear-gradient(135deg, rgba(148,163,184,0.8), rgba(226,232,240,0.35))',
         }}
       />
       <div className="flex h-full items-center justify-between px-4 text-[11px] font-extrabold uppercase tracking-[0.18em]">
-        <span className={cx(on ? 'text-emerald-700' : 'text-slate-500')}>{on ? 'ON' : 'OFF'}</span>
-        <span className="text-slate-400">{loading ? '...' : 'AUTOPILOT'}</span>
+        <span className={cx(on ? 'text-emerald-100' : 'text-slate-100')}>{on ? 'ON' : 'OFF'}</span>
+        <span className="text-slate-200/70">{loading ? '...' : 'AUTOPILOT'}</span>
       </div>
     </button>
+  );
+}
+
+/** Mini badge (ok boxed) */
+function BrandMark({ size = 20 }: { size?: number }) {
+  return (
+    <div
+      className="rounded-2xl p-[2px] shadow-[0_0_40px_-18px_rgba(6,182,212,0.55)]"
+      style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' }}
+    >
+      <div className="flex items-center justify-center" style={{ width: size + 12, height: size + 12 }}>
+        <Image src="/branding/cerbero-logo.svg" alt="Cerbero AI" width={size} height={size} />
+      </div>
+    </div>
+  );
+}
+
+/** Logo principale (NO BOX) */
+function BrandLogo({ size = 34 }: { size?: number }) {
+  return (
+    <Image
+      src="/branding/cerbero-logo.svg"
+      alt="Cerbero AI"
+      width={size}
+      height={size}
+      className="block"
+      priority
+    />
+  );
+}
+
+function BrandWordmark() {
+  return (
+    <div className="text-xl font-extrabold tracking-tight text-white">
+      Cerbero
+      <span className="bg-gradient-to-r from-cyan-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">AI</span>
+    </div>
   );
 }
 
@@ -227,7 +296,6 @@ export default function DashboardClient() {
   const email = (session?.user?.email || '').toString();
 
   const [tab, setTab] = useState<TabKey>('overview');
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ---- backend: account-state ----
@@ -240,7 +308,7 @@ export default function DashboardClient() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
 
-  // ---- UI notice ----
+  // ---- UI notice (alerts) ----
   const [uiNotice, setUiNotice] = useState<{ type: 'info' | 'warn' | 'error'; message: string } | null>(null);
   const [uiNoticeCta, setUiNoticeCta] = useState<'connect_broker' | 'open_portal' | null>(null);
 
@@ -329,20 +397,17 @@ export default function DashboardClient() {
     }
   };
 
-  // carica stato conto SOLO quando sei autenticato
   useEffect(() => {
     if (status !== 'authenticated') return;
     reloadAccountState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  // load trades when tab opens
   useEffect(() => {
     if (tab === 'trades' && trades === null && !tradesLoading) reloadTrades();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  // overview (profilo + autopilot + subscription)
   useEffect(() => {
     const run = async () => {
       if (status !== 'authenticated') return;
@@ -379,7 +444,6 @@ export default function DashboardClient() {
     run();
   }, [status]);
 
-  // billing status (stripe)
   useEffect(() => {
     const em = String(session?.user?.email || '').trim().toLowerCase();
     if (!em) return;
@@ -478,14 +542,13 @@ export default function DashboardClient() {
 
   const brokerStatus = accountState?.broker?.status || null;
 
-  // BROKER_PENDING_POLL: quando pending, ricarica stato ogni 5s per max 60s
   useEffect(() => {
     if (status !== 'authenticated') return;
     if (brokerStatus !== 'pending') return;
 
     let stopped = false;
     let ticks = 0;
-    const maxTicks = 12; // 12 * 5s = 60s
+    const maxTicks = 12; // 60s
 
     const id = setInterval(async () => {
       if (stopped) return;
@@ -537,12 +600,10 @@ export default function DashboardClient() {
 
   const brokerPill = (() => {
     const st = (brokerStatus || '').toString().toLowerCase();
-    if (st === 'active') return { label: 'Broker: Connesso', tone: 'ok' as const };
-    if (st === 'pending') return { label: 'Broker: In attesa', tone: 'neutral' as const };
-    if (['error', 'failed', 'provision_failed', 'inactive', 'disabled', 'rejected'].includes(st)) {
-      return { label: 'Broker: Errore', tone: 'warn' as const };
-    }
-    return { label: 'Broker: Non connesso', tone: 'warn' as const };
+    if (st === 'active') return { label: 'Broker connesso', tone: 'ok' as const };
+    if (st === 'pending') return { label: 'Broker in attesa', tone: 'neutral' as const };
+    if (['error', 'failed', 'provision_failed', 'inactive', 'disabled', 'rejected'].includes(st)) return { label: 'Broker in errore', tone: 'warn' as const };
+    return { label: 'Broker non connesso', tone: 'warn' as const };
   })();
 
   const currency = accountState?.account?.currency || 'EUR';
@@ -624,14 +685,12 @@ export default function DashboardClient() {
   };
 
   const toggleAutopilot = async (next: boolean) => {
-    // BROKER_GUARD: do not allow enabling autopilot without an active broker connection
     if (next === true && brokerStatus !== 'active') {
       setUiNotice({ type: 'warn', message: 'Per attivare Autopilot collega prima il broker.' });
       setUiNoticeCta('connect_broker');
       return;
     }
 
-    // SUBSCRIPTION_GUARD
     if (next === true && !subscriptionFounder && !subscriptionActive) {
       setUiNotice({ type: 'warn', message: 'Abbonamento inattivo: rinnova per attivare Autopilot.' });
       setUiNoticeCta('open_portal');
@@ -648,115 +707,60 @@ export default function DashboardClient() {
       if (!res.ok) throw new Error('toggle failed');
       setAutopilot(next);
     } catch {
-      // TODO: toast
+      // TODO toast
     } finally {
       setToggleLoading(false);
     }
   };
 
+  const systemPill = autopilot ? { label: 'Sistema: Online', tone: 'ok' as const } : { label: 'Sistema: Offline', tone: 'warn' as const };
+
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#f8fafc] text-slate-900">
-      {/* Background soft holo */}
-      <div className="pointer-events-none fixed -top-24 -left-24 h-[22rem] w-[22rem] rounded-full bg-cyan-400/20 blur-[120px] -z-10" />
-      <div className="pointer-events-none fixed bottom-10 -right-24 h-[22rem] w-[22rem] rounded-full bg-fuchsia-400/20 blur-[120px] -z-10" />
-
-      {/* Background “site-like” */}
+    <div className="relative min-h-screen overflow-x-hidden text-slate-100">
+      {/* BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50 to-white" />
-        <div className="absolute -top-44 -left-44 h-[44rem] w-[44rem] rounded-full bg-indigo-400/45 blur-[120px]" />
-        <div className="absolute top-10 -right-52 h-[46rem] w-[46rem] rounded-full bg-fuchsia-400/35 blur-[140px]" />
-        <div className="absolute bottom-[-260px] left-1/3 h-[52rem] w-[52rem] rounded-full bg-cyan-400/35 blur-[150px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/0 to-white/25" />
-        <div className="absolute inset-0 opacity-[0.08] mix-blend-overlay" style={{ backgroundImage: 'url(/noise.png)' }} />
+        <div className="absolute inset-0 bg-[#05060b]" />
+        <div className="absolute inset-0 opacity-[0.55]" style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/14 via-white/6 to-white/0" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.14),transparent_52%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_25%,rgba(255,255,255,0.10),transparent_55%)]" />
+        <div className="absolute inset-0 opacity-[0.12] mix-blend-overlay" style={{ backgroundImage: 'url(/noise.png)' }} />
       </div>
-
-      {/* Header */}
-      <header className="fixed top-0 z-50 w-full border-b border-white/40 bg-white/70 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-4 py-3 md:pl-64">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-700 shadow-sm hover:bg-slate-50"
-              aria-label="Apri menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
-            <div className="md:hidden flex items-center gap-2">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500 p-[2px] shadow-[0_0_20px_-6px_rgba(6,182,212,0.35)]">
-                <div className="h-full w-full rounded-[10px] bg-white flex items-center justify-center">
-                  <Image src="/branding/cerbero-logo.svg" alt="Cerbero AI" width={22} height={22} />
-                </div>
-              </div>
-              <div className="text-lg font-extrabold tracking-tight text-slate-900">
-                Cerbero<span className="text-cyan-600">AI</span>
-              </div>
-            </div>
-
-            <div className="hidden md:block">
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Dashboard</div>
-              <div className="text-xl font-extrabold tracking-tight text-slate-900">
-                {tab === 'trades' ? 'Live Trades' : 'Overview'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden md:block">
-              <Pill label="System Online" tone="ok" />
-            </div>
-
-            <button
-              type="button"
-              className="rounded-full border border-slate-200 bg-white px-2.5 py-2 text-slate-600 shadow-sm hover:text-fuchsia-600"
-              aria-label="Notifiche"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-
-            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500 p-[2px] shadow-[0_0_20px_-6px_rgba(236,72,153,0.35)]">
-              <div className="h-full w-full rounded-full bg-white/90 flex items-center justify-center text-[12px] font-extrabold text-slate-700">
-                {email ? String(email).slice(0, 1).toUpperCase() : 'C'}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Sidebar */}
       <aside
         className={
-          'fixed top-0 left-0 z-[60] h-screen w-64 border-r border-white/40 bg-white/70 backdrop-blur-xl p-6 pt-6 ' +
+          'fixed top-0 left-0 z-[60] h-screen w-72 md:w-64 p-6 pt-6 ' +
+          'border-r border-white/20 ' +
+          'bg-white/3 ' +
           (sidebarOpen ? 'translate-x-0' : '-translate-x-full') +
           ' md:translate-x-0 transition-transform duration-300 ease-in-out'
         }
       >
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/5 to-white/0" />
+          <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/25 blur-[90px]" />
+          <div className="absolute top-10 -right-28 h-80 w-80 rounded-full bg-fuchsia-400/20 blur-[110px]" />
+          <div className="absolute bottom-[-120px] left-1/3 h-96 w-96 rounded-full bg-violet-400/20 blur-[120px]" />
+        </div>
+
         <div className="flex items-center justify-between md:justify-start md:gap-3">
           <div className="hidden md:flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500 p-[2px] shadow-[0_0_20px_-6px_rgba(6,182,212,0.35)]">
-              <div className="h-full w-full rounded-[10px] bg-white flex items-center justify-center">
-                <Image src="/branding/cerbero-logo.svg" alt="Cerbero AI" width={22} height={22} />
-              </div>
-            </div>
-            <div className="text-2xl font-extrabold tracking-tight text-slate-900">
-              Cerbero<span className="text-cyan-600">AI</span>
-            </div>
+            <BrandLogo size={38} />
+            <BrandWordmark />
           </div>
 
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-700 shadow-sm hover:bg-slate-50"
+            className="md:hidden rounded-xl border border-white/18 bg-white/3 px-2.5 py-2 text-slate-100 shadow-sm hover:bg-white/15"
             aria-label="Chiudi menu"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-8 text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">Main Menu</div>
-
-        <nav className="mt-3 space-y-2">
+        <nav className="mt-8 space-y-2">
           <button
             type="button"
             onClick={() => {
@@ -764,13 +768,16 @@ export default function DashboardClient() {
               setSidebarOpen(false);
             }}
             className={
-              'w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition ' +
-              (tab === 'overview'
-                ? 'bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500 text-white shadow-[0_0_20px_-6px_rgba(6,182,212,0.35)]'
-                : 'text-slate-700 hover:bg-white/60')
+              'w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left font-semibold transition ' +
+              (tab === 'overview' ? 'text-white' : 'text-slate-100 hover:bg-white/3')
+            }
+            style={
+              tab === 'overview'
+                ? { backgroundImage: 'linear-gradient(135deg, rgba(6,182,212,0.35), rgba(139,92,246,0.28), rgba(236,72,153,0.30))' }
+                : undefined
             }
           >
-            <LayoutDashboard className="h-5 w-5 opacity-90" />
+            <LayoutDashboard className="h-5 w-5" />
             <span className="text-[13px]">Dashboard</span>
           </button>
 
@@ -781,24 +788,33 @@ export default function DashboardClient() {
               setSidebarOpen(false);
             }}
             className={
-              'w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition ' +
-              (tab === 'trades'
-                ? 'bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500 text-white shadow-[0_0_20px_-6px_rgba(6,182,212,0.35)]'
-                : 'text-slate-700 hover:bg-white/60')
+              'w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left font-semibold transition ' +
+              (tab === 'trades' ? 'text-white' : 'text-slate-100 hover:bg-white/3')
+            }
+            style={
+              tab === 'trades'
+                ? { backgroundImage: 'linear-gradient(135deg, rgba(6,182,212,0.28), rgba(139,92,246,0.28), rgba(236,72,153,0.35))' }
+                : undefined
             }
           >
-            <CandlestickChart className="h-5 w-5 opacity-90" />
+            <CandlestickChart className="h-5 w-5" />
             <span className="text-[13px]">Live Trades</span>
           </button>
 
-          <div className="mt-2 rounded-2xl border border-slate-200 bg-white/50 p-4">
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Account</div>
-            <div className="mt-2 text-[12px] font-semibold text-slate-700 break-all">{email || '—'}</div>
+          <div className="mt-4 rounded-3xl border border-white/18 bg-white/3 p-4">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/80">Account</div>
+            <div className="mt-2 text-[12px] font-semibold text-white break-all">{email || '—'}</div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Stato</div>
+              <Pill label={systemPill.label} tone={systemPill.tone} />
+            </div>
+
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: '/login' })}
               disabled={status !== 'authenticated'}
-              className="mt-3 w-full rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-[12px] font-extrabold text-slate-700 hover:bg-white disabled:opacity-60"
+              className="mt-3 w-full rounded-2xl border border-white/18 bg-white/3 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-white/15 disabled:"
             >
               Logout
             </button>
@@ -810,417 +826,187 @@ export default function DashboardClient() {
       {sidebarOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm md:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-50 bg-black/55 md:hidden transition-opacity duration-300"
           onClick={() => setSidebarOpen(false)}
           aria-label="Chiudi menu overlay"
         />
       ) : null}
 
-      <main className="pt-24 p-4 md:p-8 md:ml-64 relative z-10">
+      {/* Mobile top bar (minimal, NO overlap) */}
+      <div className="fixed top-4 left-4 right-4 z-50 md:hidden">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="rounded-xl border border-white/18 bg-black/25 px-3 py-2 text-white hover:bg-black/35"
+            aria-label="Apri menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <div className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/15 px-3 py-2 shadow-[0_18px_60px_-35px_rgba(0,0,0,0.6)]">
+            <BrandLogo size={26} />
+            <div className="text-[15px] font-extrabold tracking-tight text-white/90">
+              Cerbero<span className="text-cyan-300">AI</span>
+            </div>
+          </div>
+
+          <div className="w-[44px]" />
+        </div>
+      </div>
+
+      <main className="p-4 pt-20 md:pt-10 md:p-8 md:ml-64 relative z-10">
         <div className="mx-auto max-w-6xl">
           {uiNotice ? (
-            <div className="mb-5 rounded-2xl border border-slate-200 bg-white/70 p-4">
+            <div className="mb-6 rounded-3xl border border-white/18 bg-white/3 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-[13px] font-semibold text-slate-800">{uiNotice.message}</div>
+                <div className="text-[13px] font-semibold text-white">{uiNotice.message}</div>
                 <div className="flex flex-wrap gap-2">
                   {uiNoticeCta === 'connect_broker' ? (
-                    <button
-                      type="button"
+                    <PrimaryButton
                       onClick={() => {
                         setUiNotice(null);
                         setUiNoticeCta(null);
                         setBrokerModalOpen(true);
                       }}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
+                      className="px-3 py-2"
                     >
                       Collega broker
-                    </button>
+                    </PrimaryButton>
                   ) : null}
 
                   {uiNoticeCta === 'open_portal' ? (
-                    <button
-                      type="button"
+                    <PrimaryButton
                       onClick={() => {
                         setUiNotice(null);
                         setUiNoticeCta(null);
                         openPortal();
                       }}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
+                      className="px-3 py-2"
                     >
                       Gestisci abbonamento
-                    </button>
+                    </PrimaryButton>
                   ) : null}
 
-                  <button
-                    type="button"
+                  <SoftButton
                     onClick={() => {
                       setUiNotice(null);
                       setUiNoticeCta(null);
                     }}
-                    className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
+                    className="px-3 py-2"
                   >
                     Chiudi
-                  </button>
+                  </SoftButton>
                 </div>
               </div>
             </div>
           ) : null}
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-8">
-              {tab === 'overview' ? (
-                <Card className="p-6 relative overflow-hidden">
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-cyan-400 opacity-80" />
+          {tab === 'overview' ? (
+            <Card className="p-6 relative overflow-hidden">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px]" style={{ backgroundImage: 'linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899)' }} />
 
-                  {!bannerDismissed && banner ? (
-                    <div
-                      className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm relative overflow-hidden"
-                      data-testid="cerbero-banner"
-                    >
-                      <div
-                        className="pointer-events-none absolute inset-0 opacity-30"
-                        style={{
-                          backgroundImage:
-                            'radial-gradient(circle at 20% 0%, rgba(34,211,238,0.35), transparent 55%), radial-gradient(circle at 80% 10%, rgba(236,72,153,0.22), transparent 55%)',
-                        }}
-                      />
-                      <div className="relative flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 h-9 w-9 rounded-2xl bg-white ring-1 ring-slate-200 flex items-center justify-center">
-                            <Image src="/branding/cerbero-logo.svg" alt="Cerbero" width={22} height={22} />
-                          </div>
-                          <div>
-                            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">
-                              {banner.tone === 'warn' ? 'Billing' : 'Promemoria'}
-                            </div>
-                            <div className="mt-1 text-[15px] font-extrabold text-slate-900">{banner.title}</div>
-                            <div className="mt-1 text-[13px] font-semibold text-slate-600">{banner.body}</div>
-                            <div className="mt-3 flex flex-wrap items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={openPortal}
-                                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-sm hover:bg-white"
-                              >
-                                {banner.cta}
-                              </button>
-                              <div className="text-[12px] font-semibold text-slate-500">
-                                Puoi gestire il piano anche dalla sezione “Abbonamento”.
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={dismissBanner}
-                          className="relative z-10 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[12px] font-extrabold text-slate-600 hover:bg-white"
-                          aria-label="Chiudi banner"
-                          title="Chiudi"
-                        >
-                          ×
-                        </button>
+              {!bannerDismissed && banner ? (
+                <div className="mt-2 rounded-3xl border border-white/18 bg-white/3 p-4 relative overflow-hidden">
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      backgroundImage:
+                        'radial-gradient(circle at 20% 0%, rgba(34,211,238,0.35), transparent 55%), radial-gradient(circle at 80% 10%, rgba(236,72,153,0.28), transparent 55%)',
+                    }}
+                  />
+                  <div className="relative flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        <BrandMark size={18} />
                       </div>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Overview</div>
-                      <div className="mt-1 text-2xl font-extrabold tracking-tight">Centro di controllo</div>
-                      <div className="mt-2 text-[13px] text-slate-600">
-                        {overviewLoading || loadingState
-                          ? 'Caricamento dati…'
-                          : overviewError
-                          ? `Errore: ${overviewError}`
-                          : stateError
-                          ? `Errore: ${stateError}`
-                          : 'Dati caricati.'}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Pill label={brokerPill.label} tone={brokerPill.tone} />
-                      <button
-                        type="button"
-                        onClick={brokerUx.onClick}
-                        className="rounded-full border border-slate-200 bg-white/70 px-4 py-2 text-[12px] font-semibold text-slate-700 shadow-sm hover:bg-white"
-                      >
-                        {brokerUx.cta}
-                      </button>
-
-                      <BigToggle on={autopilot} loading={toggleLoading} disabled={brokerStatus !== 'active'} onToggle={toggleAutopilot} />
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-slate-200 bg-white/60 p-4 transition hover:shadow-[0_18px_50px_-30px_rgba(236,72,153,0.35)]">
-                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Balance</div>
-                      <div className="mt-2 text-3xl font-extrabold tabular-nums">{balance === null ? '—' : balance.toFixed(2)}</div>
-                      <div className="mt-1 text-[12px] font-semibold text-slate-500">{currency}</div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white/60 p-4 transition hover:shadow-[0_18px_50px_-30px_rgba(236,72,153,0.35)]">
-                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Equity</div>
-                      <div className="mt-2 text-3xl font-extrabold tabular-nums">{equity === null ? '—' : equity.toFixed(2)}</div>
-                      <div className="mt-1 text-[12px] font-semibold text-slate-500">{currency}</div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white/60 p-4 transition hover:shadow-[0_18px_50px_-30px_rgba(236,72,153,0.35)]">
-                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Open trades</div>
-                      <div className="mt-2 text-3xl font-extrabold tabular-nums">{openTrades === null ? '—' : String(openTrades)}</div>
-                      <div className="mt-1 text-[12px] font-semibold text-slate-500">live</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white/60 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Abbonamento</div>
-                        <div className="mt-1 text-[13px] font-semibold text-slate-700">
-                          {billingLoading ? 'Caricamento…' : billingError ? `Errore: ${billingError}` : billingStatus ? 'Stato aggiornato.' : '—'}
+                        <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">
+                          {banner.tone === 'warn' ? 'Billing' : 'Promemoria'}
                         </div>
-                      </div>
-
-                      <Pill
-                        label={billingLoading ? 'LOADING' : (billingStatus?.subscription_status || 'inactive').toUpperCase()}
-                        tone={
-                          billingLoading
-                            ? 'neutral'
-                            : billingStatus?.subscription_status === 'active' || billingStatus?.subscription_status === 'trialing'
-                            ? 'ok'
-                            : billingStatus?.subscription_status === 'past_due'
-                            ? 'warn'
-                            : 'neutral'
-                        }
-                      />
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-2xl border border-slate-200 bg-white/70 p-3">
-                        <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Piano</div>
-                        <div className="mt-1 text-[13px] font-semibold text-slate-800">{billingStatus?.plan_code || '—'}</div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-white/70 p-3">
-                        <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Scadenza</div>
-                        <div className="mt-1 text-[13px] font-semibold text-slate-800">
-                          {formatDateShort(billingStatus?.current_period_end || null)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-white/70 p-3">
-                        <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Autopilot</div>
-                        <div className="mt-1 text-[13px] font-semibold text-slate-800">
-                          {billingStatus?.autopilot_enabled === true ? 'ON' : billingStatus?.autopilot_enabled === false ? 'OFF' : '—'}
+                        <div className="mt-1 text-[16px] font-extrabold text-white">{banner.title}</div>
+                        <div className="mt-1 text-[13px] font-semibold text-white/85">{banner.body}</div>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <PrimaryButton onClick={openPortal}>{banner.cta}</PrimaryButton>
+                          <div className="text-[12px] font-semibold text-white/90">Gestisci il piano dal portale Stripe.</div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={openPortal}
-                        disabled={billingLoading || !billingStatus}
-                        className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-sm hover:bg-white disabled:opacity-60"
-                      >
-                        Gestisci abbonamento
-                      </button>
-                      <div className="text-[12px] font-semibold text-slate-500">
-                        Modifica metodo di pagamento, annulla o aggiorna piano dal portale Stripe.
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ) : (
-                <Card className="p-6">
-                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Trades</div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="text-[12px] text-slate-600">
-                      {tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : trades ? `${trades.length} trade(s)` : '—'}
-                    </div>
                     <button
                       type="button"
-                      onClick={reloadTrades}
-                      className="rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-white"
+                      onClick={dismissBanner}
+                      className="relative z-10 rounded-full border border-white/18 bg-white/3 px-3 py-1 text-[12px] font-extrabold text-white hover:bg-white/15"
+                      aria-label="Chiudi banner"
+                      title="Chiudi"
                     >
-                      Ricarica
+                      ×
                     </button>
                   </div>
+                </div>
+              ) : null}
 
-                  <div className="mt-4 space-y-3">
-                    {!trades || trades.length === 0 ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white/60 p-4 text-[13px] text-slate-700">
-                        {tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : 'Nessun trade ancora.'}
-                      </div>
-                    ) : (
-                      trades.map((t: TradeRow, i: number) => {
-                        const key = t.id || `${i}-${String(t.symbol || '')}-${String(t.ts || t.created_at || t.opened_at || '')}`;
-                        const ts0 = t.ts || t.created_at || t.opened_at || null;
-                        const cur = (accountState?.account?.currency || 'USD') as string;
+              <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  {/* ✅ titolo pulito, NO trasparenza */}
+                  <div className="text-5xl md:text-6xl font-extrabold tracking-tight text-white">Dashboard</div>
 
-                        const symbol = String(t.symbol || '—');
-                        const side = String(t.side || '—');
-                        const st = String(t.status || '—');
-
-                        const sizeStr = t.size_usdc == null ? '—' : formatMoney(t.size_usdc, cur);
-                        const entryStr = t.entry_price == null ? '—' : String(t.entry_price);
-                        const exitStr = t.exit_price == null ? '—' : String(t.exit_price);
-                        const pnlStr = t.pnl_usdc == null ? '—' : formatMoney(t.pnl_usdc, cur);
-
-                        return (
-                          <div
-                            key={key}
-                            className="group relative rounded-[2rem] border border-white/40 bg-white/70 p-4 shadow-[0_18px_60px_-40px_rgba(31,38,135,0.35)] backdrop-blur-xl"
-                          >
-                            <div className="pointer-events-none absolute -inset-[1px] rounded-[2rem] bg-gradient-to-r from-cyan-500/20 via-violet-500/20 to-fuchsia-500/20 opacity-70" />
-                            <div
-                              className="pointer-events-none absolute inset-0 rounded-[2rem] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                              style={{
-                                boxShadow: '0 0 30px -10px rgba(6,182,212,0.35), 0 0 34px -14px rgba(236,72,153,0.35)',
-                              }}
-                            />
-
-                            <div className="relative">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <div className="text-[18px] font-extrabold tracking-tight text-gradient-cyber">{symbol}</div>
-                                    <span className="rounded-full border border-white/50 bg-white/60 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-sm">
-                                      {side}
-                                    </span>
-                                    <span className="rounded-full border border-white/50 bg-white/60 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-sm">
-                                      {st}
-                                    </span>
-                                  </div>
-                                  <div className="mt-1 text-[12px] text-slate-500">{formatTs(ts0)}</div>
-                                </div>
-
-                                <div className="shrink-0 text-right">
-                                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">PnL</div>
-                                  <div
-                                    className={
-                                      'mt-1 text-[16px] font-extrabold ' +
-                                      (t.pnl_usdc == null
-                                        ? 'text-slate-900'
-                                        : Number(t.pnl_usdc) > 0
-                                        ? 'text-emerald-600'
-                                        : Number(t.pnl_usdc) < 0
-                                        ? 'text-rose-600'
-                                        : 'text-slate-700')
-                                    }
-                                  >
-                                    {pnlStr}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="mt-3 grid grid-cols-2 gap-3">
-                                <div className="rounded-2xl border border-white/50 bg-white/60 p-3 shadow-[0_10px_30px_-22px_rgba(31,38,135,0.35)] backdrop-blur-xl">
-                                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Size</div>
-                                  <div className="mt-1 text-[13px] font-semibold text-slate-800">{sizeStr}</div>
-                                </div>
-                                <div className="rounded-2xl border border-white/50 bg-white/60 p-3 shadow-[0_10px_30px_-22px_rgba(31,38,135,0.35)] backdrop-blur-xl">
-                                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Entry</div>
-                                  <div className="mt-1 text-[13px] font-semibold text-slate-800">{entryStr}</div>
-                                </div>
-                                <div className="rounded-2xl border border-white/50 bg-white/60 p-3 shadow-[0_10px_30px_-22px_rgba(31,38,135,0.35)] backdrop-blur-xl">
-                                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Exit</div>
-                                  <div className="mt-1 text-[13px] font-semibold text-slate-800">{exitStr}</div>
-                                </div>
-                                <div className="rounded-2xl border border-white/50 bg-white/60 p-3 shadow-[0_10px_30px_-22px_rgba(31,38,135,0.35)] backdrop-blur-xl">
-                                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Stato</div>
-                                  <div className="mt-1 text-[13px] font-semibold text-slate-800">{st}</div>
-                                </div>
-                              </div>
-
-                              <div className="mt-4 rounded-[2rem] border border-white/50 bg-gradient-to-br from-white/60 to-fuchsia-50/30 p-4 shadow-[0_12px_36px_-28px_rgba(236,72,153,0.35)] backdrop-blur-xl">
-                                <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">AI Reasoning</div>
-                                <div className="mt-1 text-[12px] text-slate-600">
-                                  Placeholder: qui mostreremo una spiegazione in linguaggio naturale (arriverà dal cervello). Per ora UI pronta.
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
+                  <div className="mt-2 text-[13px] text-white/80">
+                    {overviewLoading || loadingState
+                      ? 'Caricamento dati…'
+                      : overviewError
+                      ? `Errore: ${overviewError}`
+                      : stateError
+                      ? `Errore: ${stateError}`
+                      : ''}
                   </div>
+                </div>
 
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white/60 p-4 text-[13px] text-slate-700">
-                    UI tabella + filtri (open/closed) — poi colleghiamo a <code className="font-mono">/api/trades</code>.
-                  </div>
-                </Card>
-              )}
-            </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Pill label={brokerPill.label} tone={brokerPill.tone} className="px-4 py-2 text-[12px]" />
+                  <SoftButton onClick={brokerUx.onClick}>{brokerUx.cta}</SoftButton>
+                  <BigToggle on={autopilot} loading={toggleLoading} disabled={brokerStatus !== 'active'} onToggle={toggleAutopilot} />
+                </div>
+              </div>
 
-            {/* Right / side */}
-            <div className="lg:col-span-4">
-              <Card className="p-6">
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Mission Status</div>
-                <div className="mt-3 space-y-3">
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/60 p-4">
-                    <span className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
-                      <Server className="h-4 w-4 text-cyan-600" />
-                      Sistema
-                    </span>
-                    <Pill label="Online" tone="ok" />
-                  </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-3xl border border-white/18 bg-white/3 p-4">
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Balance</div>
+                  <div className="mt-2 text-5xl md:text-6xl font-extrabold tabular-nums text-white">{balance === null ? '—' : balance.toFixed(2)}</div>
+                  <div className="mt-1 text-[12px] font-semibold text-white/85">{currency}</div>
+                </div>
 
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/60 p-4">
+                <div className="rounded-3xl border border-white/18 bg-white/3 p-4">
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Equity</div>
+                  <div className="mt-2 text-5xl md:text-6xl font-extrabold tabular-nums text-white">{equity === null ? '—' : equity.toFixed(2)}</div>
+                  <div className="mt-1 text-[12px] font-semibold text-white/85">{currency}</div>
+                </div>
+
+                <div className="rounded-3xl border border-white/18 bg-white/3 p-4">
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Open trades</div>
+                  <div className="mt-2 text-5xl md:text-6xl font-extrabold tabular-nums text-white">{openTrades === null ? '—' : String(openTrades)}</div>
+                  <div className="mt-1 text-[12px] font-semibold text-white/85">live</div>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-3xl border border-white/18 bg-white/3 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <div className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
-                        <Link className="h-4 w-4 text-fuchsia-600" />
-                        Broker
-                      </div>
-                      <div className="mt-1 text-[12px] text-slate-500">{brokerUx.desc}</div>
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Stile di trading</div>
+                      <div className="mt-1 text-[13px] font-semibold text-white/85">Scegli il profilo operativo</div>
+                      {aggrErr ? <div className="mt-1 text-[12px] font-semibold text-rose-100">{aggrErr}</div> : null}
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {brokerStatus === 'active' ? (
-                        <Pill label="Connesso" tone="ok" />
-                      ) : brokerStatus === 'pending' ? (
-                        <Pill label="In attesa" tone="neutral" />
-                      ) : (
-                        <Pill label="Non connesso" tone="warn" />
-                      )}
-                      <button
-                        type="button"
-                        onClick={brokerUx.onClick}
-                        className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white"
-                      >
-                        {brokerUx.cta}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/60 p-4">
-                    <span className="text-[12px] font-semibold text-slate-700">Last sync</span>
-                    <Pill label={formatLastSync(accountState?.account?.updated_at)} tone="neutral" />
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/60 p-4">
-                    <div className="flex flex-col">
-                      <span className="flex items-center gap-2 text-[12px] font-semibold text-slate-700">
-                        <Cpu className="h-4 w-4 text-violet-600" />
-                        Stile di trading
-                      </span>
-                      <span className="mt-1 text-[12px] text-slate-500">Conservative = NORMAL • Aggressive = AGGRESSIVE</span>
-                      {aggrErr ? <span className="mt-1 text-[12px] text-rose-600">{aggrErr}</span> : null}
-                    </div>
-
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         disabled={aggrSaving}
                         onClick={() => submitAggressiveness('NORMAL')}
-                        className={
-                          'rounded-xl border px-3 py-2 text-[12px] font-semibold transition ' +
-                          (aggr === 'NORMAL' ? 'border-transparent text-white' : 'border-slate-200 bg-white/70 text-slate-700')
-                        }
-                        style={
-                          aggr === 'NORMAL'
-                            ? { backgroundImage: 'linear-gradient(135deg, #4f46e5, #a855f7, #22d3ee)' }
-                            : undefined
-                        }
+                        className={cx(
+                          'rounded-2xl border px-3 py-2 text-[12px] font-extrabold transition',
+                          aggr === 'NORMAL' ? 'border-transparent text-white' : 'border-white/18 bg-white/3 text-white hover:bg-white/15'
+                        )}
+                        style={aggr === 'NORMAL' ? { backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6)' } : undefined}
                       >
                         <span className="inline-flex items-center gap-2">
                           <Shield className="h-4 w-4" />
@@ -1232,17 +1018,11 @@ export default function DashboardClient() {
                         type="button"
                         disabled={aggrSaving}
                         onClick={() => submitAggressiveness('AGGRESSIVE')}
-                        className={
-                          'rounded-xl border px-3 py-2 text-[12px] font-semibold transition ' +
-                          (aggr === 'AGGRESSIVE'
-                            ? 'border-transparent text-white'
-                            : 'border-slate-200 bg-white/70 text-slate-700')
-                        }
-                        style={
-                          aggr === 'AGGRESSIVE'
-                            ? { backgroundImage: 'linear-gradient(135deg, #4f46e5, #a855f7, #22d3ee)' }
-                            : undefined
-                        }
+                        className={cx(
+                          'rounded-2xl border px-3 py-2 text-[12px] font-extrabold transition',
+                          aggr === 'AGGRESSIVE' ? 'border-transparent text-white' : 'border-white/18 bg-white/3 text-white hover:bg-white/15'
+                        )}
+                        style={aggr === 'AGGRESSIVE' ? { backgroundImage: 'linear-gradient(135deg, #8b5cf6, #ec4899)' } : undefined}
                       >
                         <span className="inline-flex items-center gap-2">
                           <Zap className="h-4 w-4" />
@@ -1252,50 +1032,169 @@ export default function DashboardClient() {
                     </div>
                   </div>
                 </div>
-              </Card>
-            </div>
-          </div>
+
+                <div className="rounded-3xl border border-white/18 bg-white/3 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Abbonamento</div>
+                      <div className="mt-1 text-[13px] font-semibold text-white/85">
+                        {billingLoading ? 'Caricamento…' : billingError ? `Errore: ${billingError}` : billingStatus ? 'Stato aggiornato.' : '—'}
+                      </div>
+                    </div>
+
+                    <Pill
+                      label={billingLoading ? 'LOADING' : (billingStatus?.subscription_status || 'inactive').toUpperCase()}
+                      tone={
+                        billingLoading
+                          ? 'neutral'
+                          : billingStatus?.subscription_status === 'active' || billingStatus?.subscription_status === 'trialing'
+                          ? 'ok'
+                          : billingStatus?.subscription_status === 'past_due'
+                          ? 'warn'
+                          : 'neutral'
+                      }
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-[12px] font-semibold text-white/90">
+                      Scadenza: <span className="text-white">{formatDateShort(billingStatus?.current_period_end || null)}</span>
+                    </div>
+                    <PrimaryButton onClick={openPortal} disabled={billingLoading || !billingStatus}>
+                      Gestisci abbonamento
+                    </PrimaryButton>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-6 relative overflow-hidden">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px]" style={{ backgroundImage: 'linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899)' }} />
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/90">Live Trades</div>
+
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="text-[12px] text-white/80">{tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : trades ? `${trades.length} trade(s)` : '—'}</div>
+                <SoftButton onClick={reloadTrades} className="px-3 py-2">
+                  Ricarica
+                </SoftButton>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {!trades || trades.length === 0 ? (
+                  <div className="rounded-3xl border border-white/18 bg-white/3 p-4 text-[13px] text-white/85">{tradesLoading ? 'Caricamento...' : tradesErr ? `Errore: ${tradesErr}` : 'Nessun trade ancora.'}</div>
+                ) : (
+                  trades.map((t: TradeRow, i: number) => {
+                    const key = t.id || `${i}-${String(t.symbol || '')}-${String(t.ts || t.created_at || t.opened_at || '')}`;
+                    const ts0 = t.ts || t.created_at || t.opened_at || null;
+                    const cur = (accountState?.account?.currency || 'USD') as string;
+
+                    const symbol = String(t.symbol || '—');
+                    const side = String(t.side || '—');
+                    const st = String(t.status || '—');
+
+                    const sizeStr = t.size_usdc == null ? '—' : formatMoney(t.size_usdc, cur);
+                    const entryStr = t.entry_price == null ? '—' : String(t.entry_price);
+                    const exitStr = t.exit_price == null ? '—' : String(t.exit_price);
+                    const pnlStr = t.pnl_usdc == null ? '—' : formatMoney(t.pnl_usdc, cur);
+
+                    return (
+                      <div key={key} className="group relative rounded-[2rem] border border-white/18 bg-white/3 p-4">
+                        <div className="pointer-events-none absolute -inset-[1px] rounded-[2rem]" style={{ backgroundImage: 'linear-gradient(90deg, rgba(6,182,212,0.22), rgba(139,92,246,0.18), rgba(236,72,153,0.22))' }} />
+                        <div
+                          className="pointer-events-none absolute inset-0 rounded-[2rem] transition-opacity duration-300"
+                          style={{ boxShadow: '0 0 34px -14px rgba(6,182,212,0.40), 0 0 38px -18px rgba(236,72,153,0.40)' }}
+                        />
+
+                        <div className="relative">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-[18px] font-extrabold tracking-tight bg-gradient-to-r from-cyan-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{symbol}</div>
+                                <span className="rounded-full border border-white/18 bg-white/3 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white">{side}</span>
+                                <span className="rounded-full border border-white/18 bg-white/3 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white">{st}</span>
+                              </div>
+                              <div className="mt-1 text-[12px] text-white/90">{formatTs(ts0)}</div>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">PnL</div>
+                              <div
+                                className={
+                                  'mt-1 text-[16px] font-extrabold ' +
+                                  (t.pnl_usdc == null ? 'text-white' : Number(t.pnl_usdc) > 0 ? 'text-emerald-200' : Number(t.pnl_usdc) < 0 ? 'text-rose-200' : 'text-white/85')
+                                }
+                              >
+                                {pnlStr}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-3">
+                            <div className="rounded-3xl border border-white/18 bg-white/3 p-3">
+                              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Size</div>
+                              <div className="mt-1 text-[13px] font-semibold text-white">{sizeStr}</div>
+                            </div>
+                            <div className="rounded-3xl border border-white/18 bg-white/3 p-3">
+                              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Entry</div>
+                              <div className="mt-1 text-[13px] font-semibold text-white">{entryStr}</div>
+                            </div>
+                            <div className="rounded-3xl border border-white/18 bg-white/3 p-3">
+                              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Exit</div>
+                              <div className="mt-1 text-[13px] font-semibold text-white">{exitStr}</div>
+                            </div>
+                            <div className="rounded-3xl border border-white/18 bg-white/3 p-3">
+                              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Stato</div>
+                              <div className="mt-1 text-[13px] font-semibold text-white">{st}</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 rounded-[2rem] border border-white/18 bg-white/3 p-4">
+                            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">AI Reasoning</div>
+                            <div className="mt-1 text-[12px] text-white/80">
+                              Placeholder: qui mostreremo una spiegazione in linguaggio naturale (arriverà dal cervello). Per ora UI pronta.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </Card>
+          )}
         </div>
       </main>
 
       {/* Broker connect modal */}
       {brokerModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/18 bg-black/35 p-6 shadow-[0_40px_120px_-60px_rgba(0,0,0,0.85)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Broker</div>
-                <div className="mt-1 text-2xl font-extrabold tracking-tight">Collega il tuo conto</div>
-                <div className="mt-2 text-[13px] text-slate-600">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Broker</div>
+                <div className="mt-1 text-2xl font-extrabold tracking-tight text-white">Collega il tuo conto</div>
+                <div className="mt-2 text-[13px] text-white/80">
                   Inserisci i dati del broker. Le credenziali verranno usate solo per collegare il conto tramite MetaApi e non verranno salvate.
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setBrokerModalOpen(false)}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
-              >
+              <SoftButton onClick={() => setBrokerModalOpen(false)} className="px-3 py-2">
                 Chiudi
-              </button>
+              </SoftButton>
             </div>
 
             <div className="mt-6 grid gap-4">
               <div className="grid gap-2">
-                <label className="text-[12px] font-semibold text-slate-700">Piattaforma</label>
+                <label className="text-[12px] font-semibold text-white">Piattaforma</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setBrokerPlatform('mt5')}
                     className={cx(
-                      'flex-1 rounded-2xl border px-4 py-2 text-[12px] font-semibold',
-                      brokerPlatform === 'mt5' ? 'border-transparent text-white' : 'border-slate-200 bg-white/70 text-slate-700'
+                      'flex-1 rounded-2xl border px-4 py-2 text-[12px] font-extrabold',
+                      brokerPlatform === 'mt5' ? 'border-transparent text-white' : 'border-white/18 bg-white/3 text-white hover:bg-white/15'
                     )}
-                    style={
-                      brokerPlatform === 'mt5'
-                        ? { backgroundImage: 'linear-gradient(135deg, #4f46e5, #a855f7, #22d3ee)' }
-                        : undefined
-                    }
+                    style={brokerPlatform === 'mt5' ? { backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6)' } : undefined}
                   >
                     MT5
                   </button>
@@ -1304,14 +1203,10 @@ export default function DashboardClient() {
                     type="button"
                     onClick={() => setBrokerPlatform('mt4')}
                     className={cx(
-                      'flex-1 rounded-2xl border px-4 py-2 text-[12px] font-semibold',
-                      brokerPlatform === 'mt4' ? 'border-transparent text-white' : 'border-slate-200 bg-white/70 text-slate-700'
+                      'flex-1 rounded-2xl border px-4 py-2 text-[12px] font-extrabold',
+                      brokerPlatform === 'mt4' ? 'border-transparent text-white' : 'border-white/18 bg-white/3 text-white hover:bg-white/15'
                     )}
-                    style={
-                      brokerPlatform === 'mt4'
-                        ? { backgroundImage: 'linear-gradient(135deg, #4f46e5, #a855f7, #22d3ee)' }
-                        : undefined
-                    }
+                    style={brokerPlatform === 'mt4' ? { backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6)' } : undefined}
                   >
                     MT4
                   </button>
@@ -1319,80 +1214,60 @@ export default function DashboardClient() {
               </div>
 
               <div className="grid gap-2">
-                <label className="text-[12px] font-semibold text-slate-700">Login</label>
+                <label className="text-[12px] font-semibold text-white">Login</label>
                 <input
                   value={brokerLogin}
                   onChange={(e) => setBrokerLogin(e.target.value)}
                   placeholder="Es. 12345678"
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="rounded-2xl border border-white/18 bg-white/3 px-4 py-3 text-[13px] font-semibold text-white outline-none placeholder:text-white/80 focus:ring-2 focus:ring-cyan-300/35"
                 />
 
                 <div className="mt-3">
-                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-500">Password</div>
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">Password</div>
                   <input
                     type="password"
                     value={brokerPassword}
                     onChange={(e) => setBrokerPassword(e.target.value)}
                     placeholder="Password broker (one-shot, non salvata)"
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-[13px] font-semibold text-slate-700 shadow-sm outline-none focus:border-indigo-300"
+                    className="mt-2 w-full rounded-2xl border border-white/18 bg-white/3 px-4 py-3 text-[13px] font-semibold text-white outline-none placeholder:text-white/80 focus:ring-2 focus:ring-fuchsia-300/30"
                   />
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <label className="text-[12px] font-semibold text-slate-700">Server</label>
+                <label className="text-[12px] font-semibold text-white">Server</label>
                 <input
                   value={brokerServer}
                   onChange={(e) => setBrokerServer(e.target.value)}
                   placeholder="Es. ICMarketsSC-Live"
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="rounded-2xl border border-white/18 bg-white/3 px-4 py-3 text-[13px] font-semibold text-white outline-none placeholder:text-white/80 focus:ring-2 focus:ring-violet-300/30"
                 />
               </div>
 
-              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <input
-                  type="checkbox"
-                  checked={brokerConsent}
-                  onChange={(e) => setBrokerConsent(e.target.checked)}
-                  className="mt-1 h-4 w-4"
-                />
-                <div className="text-[12px] text-slate-700">
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/18 bg-white/3 p-4">
+                <input type="checkbox" checked={brokerConsent} onChange={(e) => setBrokerConsent(e.target.checked)} className="mt-1 h-4 w-4" />
+                <div className="text-[12px] text-white/85">
                   <div className="font-semibold">
                     Autorizzo Cerbero a utilizzare queste credenziali solo per collegare il mio conto tramite MetaApi. Le credenziali non verranno salvate.
                   </div>
-                  <div className="mt-1 text-slate-500">
-                    Se la password del broker cambia, la connessione verrà sospesa e dovrai ricollegare il conto.
-                  </div>
+                  <div className="mt-1 text-white/65">Se la password del broker cambia, la connessione verrà sospesa e dovrai ricollegare il conto.</div>
                 </div>
               </label>
 
-              {brokerErr ? (
-                <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-semibold text-amber-800">
-                  {brokerErr}
-                </div>
-              ) : null}
-
-              {brokerMsg ? (
-                <div className="mb-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-[12px] font-semibold text-slate-700">
-                  {brokerMsg}
-                </div>
-              ) : null}
+              {brokerErr ? <div className="rounded-2xl border border-amber-300/35 bg-amber-300/15 px-4 py-3 text-[12px] font-semibold text-amber-100">{brokerErr}</div> : null}
+              {brokerMsg ? <div className="rounded-2xl border border-white/18 bg-white/3 px-4 py-3 text-[12px] font-semibold text-white/85">{brokerMsg}</div> : null}
 
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setBrokerModalOpen(false)}
-                  className="flex-1 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-[13px] font-extrabold text-slate-700 hover:bg-white"
-                >
+                <SoftButton onClick={() => setBrokerModalOpen(false)} className="flex-1 px-4 py-3 text-[13px]">
                   Annulla
-                </button>
+                </SoftButton>
 
                 <button
                   type="button"
                   disabled={brokerSubmitting}
                   onClick={submitBrokerConnect}
-                  className="flex-1 rounded-2xl border border-transparent px-4 py-3 text-[13px] font-extrabold text-white shadow-sm disabled:opacity-60"
-                  style={{ backgroundImage: 'linear-gradient(135deg, #4f46e5, #a855f7, #ec4899, #22d3ee)' }}
+                  className="flex-1 rounded-2xl border border-transparent px-4 py-3 text-[13px] font-extrabold text-white shadow-sm disabled:"
+                  style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' }}
                 >
                   {brokerSubmitting ? 'Collegamento…' : 'Collega conto'}
                 </button>

@@ -144,13 +144,13 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
+    <div className="relative min-h-screen overflow-hidden text-slate-900">
       {/* Luminous / Aurora background */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50 to-white" />
-        <div className="absolute -top-44 -left-44 h-[620px] w-[620px] rounded-full bg-indigo-300/55 blur-[110px] mix-blend-multiply" />
-        <div className="absolute top-1/4 -right-52 h-[680px] w-[680px] rounded-full bg-fuchsia-300/40 blur-[120px] mix-blend-multiply" />
-        <div className="absolute bottom-[-260px] left-1/3 h-[760px] w-[760px] rounded-full bg-sky-300/40 blur-[130px] mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900" />
+        <div className="absolute -top-44 -left-44 h-[620px] w-[620px] rounded-full bg-indigo-500/70 blur-[110px] mix-blend-multiply" />
+        <div className="absolute top-1/4 -right-52 h-[680px] w-[680px] rounded-full bg-fuchsia-500/70 blur-[120px] mix-blend-multiply" />
+        <div className="absolute bottom-[-260px] left-1/3 h-[760px] w-[760px] rounded-full bg-cyan-500/70 blur-[130px] mix-blend-multiply" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.18),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_20%,rgba(255,255,255,0)_0%,rgba(255,255,255,0.55)_62%,rgba(255,255,255,0.85)_100%)]" />
       </div>
@@ -202,7 +202,9 @@ export default function SignupPage() {
               {/* FORM */}
               <div>
                 <h1 className="text-2xl font-extrabold tracking-tight">
-                  Attiva Cerbero Autopilot
+                  <span className="bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(168,85,247,0.45)]">
+                  Attiva Cerbero: il tuo AI Trading Agent
+                </span>
                 </h1>
                 <p className="mt-2 text-sm font-semibold text-slate-600">
                   Crea l’account e prosegui al pagamento. Dopo l’attivazione potrai

@@ -61,3 +61,9 @@ app/**/*.bak_*
 
 # debug / temp pages
 app/debug/
+
+# Cerbero local patch artifacts
+*.bak_*
+*bak_visual_*
+patch_*.py
+fix_*.py
