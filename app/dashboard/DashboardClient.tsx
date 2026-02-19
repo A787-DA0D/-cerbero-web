@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { signOut, useSession } from 'next-auth/react';
-import { Menu, X, LayoutDashboard, CandlestickChart, Shield, Zap } from 'lucide-react';
+import { Menu, X, LayoutDashboard, CandlestickChart, Shield, Zap, Info } from 'lucide-react';
 
 type TabKey = 'overview' | 'trades';
 
@@ -315,6 +315,8 @@ export default function DashboardClient() {
 
   // ---- UI notice (alerts) ----
   const [uiNotice, setUiNotice] = useState<{ type: 'info' | 'warn' | 'error'; message: string } | null>(null);
+
+  const [openWhyKey, setOpenWhyKey] = useState<string | null>(null);
   const [uiNoticeCta, setUiNoticeCta] = useState<'connect_broker' | 'open_portal' | null>(null);
 
   // ---- overview status ----
@@ -1228,14 +1230,48 @@ useEffect(() => {
                                   if (v) parts.push(v);
                                 }
 
-                                if (origin) parts.push(`(${origin})`);
+                                if (!parts.length && !origin) return null;
 
-                                if (!parts.length) return null;
+                                const previewParts = parts.slice(0, 2);
+                                const preview = previewParts.join(' • ') + (parts.length > 2 ? ' …' : '');
+                                const isOpen = openWhyKey === key;
 
                                 return (
-                                  <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-white/18 bg-white/3 px-3 py-2 text-[12px] font-semibold text-white/85">
-                                    <span className="font-extrabold uppercase tracking-[0.18em] text-white/80">WHY</span>
-                                    <span className="break-words">{parts.join(' • ')}</span>
+                                  <div className="mt-2">
+                                    <div className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-white/18 bg-white/3 px-3 py-2 text-[12px] font-semibold text-white/85">
+                                      <span className="font-extrabold uppercase tracking-[0.18em] text-white/80">WHY</span>
+                                      <span className="break-words">
+                                        {preview || '—'}{origin ? ` (${origin})` : ''}
+                                      </span>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenWhyKey(isOpen ? null : key)}
+                                        className="ml-1 inline-flex items-center justify-center rounded-xl border border-white/18 bg-white/5 px-2 py-1 text-[11px] font-extrabold text-white hover:bg-white/15"
+                                        aria-label={isOpen ? 'Chiudi dettagli WHY' : 'Apri dettagli WHY'}
+                                        title={isOpen ? 'Chiudi dettagli' : 'Dettagli'}
+                                      >
+                                        <Info className="h-4 w-4" />
+                                      </button>
+                                    </div>
+
+                                    {isOpen ? (
+                                      <div className="mt-2 rounded-2xl border border-white/18 bg-white/3 p-3 text-[12px] text-white/85">
+                                        <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/80">Dettagli WHY</div>
+                                        <div className="mt-2 space-y-1">
+                                          {origin ? (
+                                            <div className="break-words">
+                                              <span className="font-extrabold text-white/90">Origine:</span> {origin}
+                                            </div>
+                                          ) : null}
+                                          {parts && parts.length ? (
+                                            <div className="break-words">
+                                              <span className="font-extrabold text-white/90">Motivi:</span> {parts.join(' • ')}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                    ) : null}
                                   </div>
                                 );
                               })()}
