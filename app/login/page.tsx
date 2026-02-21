@@ -3,6 +3,7 @@
 import { signIn, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -178,6 +179,13 @@ export default function LoginPage() {
           <div className="mt-6 text-[12px] font-semibold text-slate-500">
             Problemi? Controlla lo spam oppure riprova tra 1 minuto.
           </div>
+          <div className="mt-2 text-center text-[12px] font-semibold text-slate-500">
+            Non hai un account?{' '}
+            <Link href="/signup" className="font-bold underline underline-offset-4 hover:text-slate-700">
+              Registrati
+            </Link>
+          </div>
+
         </Card>
       </main>
     </div>
