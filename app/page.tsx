@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import React, { useMemo } from 'react';
+import InstallAppSection from '@/components/pwa/InstallAppSection';
 
 /* ----------------------------- helpers ----------------------------- */
 
@@ -776,6 +777,7 @@ export default function HomePage() {
         <OnboardingSteps />
         <TrustCenter />
         <Pricing />
+        <InstallAppSection />
         <Footer />
       </main>
     </div>

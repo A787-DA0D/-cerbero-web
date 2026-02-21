@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CookieBanner } from "@/components/CookieBanner";
 import AuthProvider from "@/components/auth/AuthProvider";
+import RouteChangeTracker from "@/components/analytics/RouteChangeTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,12 +64,37 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it">
-<head>
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-</head>
+      <head>
+        <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                const gaDebug =
+                  window.location.hostname === 'localhost' ||
+                  new URLSearchParams(window.location.search).has('ga_debug');
+
+                gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
+                  send_page_view: false,
+                  debug_mode: gaDebug
+                });
+              `}
+            </Script>
+          </>
+        ) : null}
+      </head>
 
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <AuthProvider>
+          <RouteChangeTracker />
           {children}
           <CookieBanner />
         </AuthProvider>

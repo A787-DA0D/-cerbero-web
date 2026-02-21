@@ -84,6 +84,14 @@ async function safeJson<T>(res: Response): Promise<T | null> {
   }
 }
 
+
+function trackGaEvent(name: string, params?: Record<string, any>) {
+  try {
+    // @ts-ignore
+    window.gtag?.("event", name, params || {});
+  } catch {}
+}
+
 function daysUntil(ts?: string | null): number | null {
   if (!ts) return null;
   const d = new Date(ts);
@@ -357,6 +365,30 @@ export default function DashboardClient() {
 useEffect(() => {
     if (status === 'unauthenticated') window.location.href = '/login';
   }, [status]);
+
+  // GA: signup completato (solo dopo auth reale, una sola volta)
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const em = String(session?.user?.email || '').trim().toLowerCase();
+    if (!em) return;
+
+    try {
+      const pending = localStorage.getItem("cerbero_pending_signup");
+      if (!pending) return;
+
+      const onceKey = `cerbero_ga_once:event_signup_complete:${em}`;
+      if (localStorage.getItem(onceKey) === "1") {
+        // pulizia marker pending, in caso sia rimasto
+        localStorage.removeItem("cerbero_pending_signup");
+        return;
+      }
+
+      trackGaEvent("event_signup_complete", { email: em });
+      localStorage.setItem(onceKey, "1");
+      localStorage.removeItem("cerbero_pending_signup");
+    } catch {}
+  }, [status, session?.user?.email]);
+
 
   const reloadAccountState = async () => {
     try {
