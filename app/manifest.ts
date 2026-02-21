@@ -6,7 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Cerbero AI',
     description:
       'Cerbero è una Coscienza Finanziaria Autonoma: sistema di autotrading istituzionale accessibile a tutti.',
-    start_url: '/',
+    start_url: '/login',
+    scope: '/',
     display: 'standalone',
     background_color: '#000000',
     theme_color: '#000000',
