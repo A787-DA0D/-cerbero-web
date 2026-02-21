@@ -107,6 +107,15 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
+      // GA (marketing): click signup (prima di Stripe)
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g: any = (window as any).gtag;
+        g?.("event", "event_signup_click", {
+          page_path: window.location.pathname + window.location.search,
+        });
+      } catch {}
+
       // Step successivo: /api/register → Stripe Checkout
       const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
@@ -130,6 +139,10 @@ export default function SignupPage() {
       }
 
       if (data.redirectUrl) {
+        // Marker locale: signup avviato (completamento verrà tracciato in /dashboard solo dopo auth reale)
+        try {
+          localStorage.setItem("cerbero_pending_signup", String(Date.now()));
+        } catch {}
         window.location.href = data.redirectUrl;
         return;
       }
