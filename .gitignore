@@ -67,3 +67,6 @@ app/debug/
 *bak_visual_*
 patch_*.py
 fix_*.py
+
+# local backups
+features_live_backup/
